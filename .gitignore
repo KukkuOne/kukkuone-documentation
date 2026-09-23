@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+dist-worker/
+build/
+.next/
+*.tsbuildinfo
+
+# Env & secrets — NEVER commit real values
+.env
+.env.local
+.env.*.local
+**/.env
+!**/.env.example
+.dev.vars
+*.pem
+serviceAccount*.json
+GoogleService-Info.plist
+google-services.json
+
+# Tooling
+.wrangler/
+.turbo/
+coverage/
+.DS_Store
