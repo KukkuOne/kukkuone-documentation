@@ -1,25 +1,34 @@
 # 09 — Client Apps Spec
 
-The **actor apps** — one web app and one mobile app — serve all three actors
-(**Farmer / Distributor / Supplier**) from a **single codebase each**. The app
-does not fork per actor; it renders the matching navigation, screens, and tabs at
-runtime from the org's **capabilities** + the user's **role**. The **Farmer**
-experience is built **first**.
+**Superseded in part, 2026-10-04 — see [D-9](00-Decision-Record.md).** This
+document was written for one web app and one mobile app serving all three
+actors from a single codebase each. That is no longer the client set. The
+**screen specs below (§5 onward) still stand** — they describe farmer screens,
+and those moved to `kukkuone-farmer-mobile` unchanged in substance.
 
-**Apps:**
+**The client set that holds:**
 
-| App | Stack |
-|-----|-------|
-| `kukkuone-web` | React + Vite + TypeScript + **Ant Design**, TanStack Query, Zustand, React Hook Form + Zod, React Router |
-| `kukkuone-mobile` | Expo / React Native + **Expo Router**, **React Native Paper**, **tab layout**, TanStack Query, Zustand, `expo-secure-store`, React Hook Form + Zod |
+| App | Serves | Stack |
+|-----|--------|-------|
+| `kukkuone-farmer-mobile` | Farming only | **Flutter** |
+| `kukkuone-partner-mobile` | The five counterparty roles, one workspace switcher | **Flutter** |
+| `kukkuone-platform-web` | Portal-style web per audience (deploys as `kukkuone-web`) | React + Vite + TS + Ant Design |
+| `kukkuone-admin-web` | Platform-owner console — see [08](08-Admin-Panel-Spec.md) | React + Vite + TS + Ant Design |
 
-Both consume the shared packages **`@kukkuone/api-client`** (typed calls to the
-gateway `/api/*`) and **`@kukkuone/types`** (`Principal`, `Capability`, entity
-types) and share **Zod** validation schemas — so a screen written once validates
-and calls identically on web and mobile.
+Farming is split out deliberately: it is a system of record filled in several
+times a day on a farm, offline, in Telugu, by someone whose whole job is the
+birds. The counterparty roles are a different kind of software — publish a
+catalogue or an offer, receive an order, agree terms, record a dispatch,
+settle. One switcher over both would serve neither audience.
 
-> The platform-owner console `kukkuone-admin-web` is a **separate** app; see
-> [08-Admin-Panel-Spec.md](08-Admin-Panel-Spec.md).
+The partner roles are **HATCHERY**, **FEED_SUPPLIER**, **TRADING_PARTNER**,
+**LIFTING_PARTNER** (built) and **CHICKEN_RETAILER** (not built — its tabs say
+"Soon"). The catalogue is `kukkuone-partner-mobile/lib/roles.ts`, kept in step
+with `Capability` in `packages/types/src/enums.ts` by hand.
+
+Web consumes **`@kukkuone/api-client`** and **`@kukkuone/types`**. The Flutter
+apps do not — they are outside the pnpm workspace and declare their own models,
+which is why the role catalogue and `Capability` have to be reconciled by hand.
 
 Related docs: [Product Overview](01-Product-Overview.md) ·
 [Auth & RBAC](05-Auth-And-RBAC.md) · [Data Model](06-Data-Model.md) ·
@@ -30,7 +39,11 @@ Related docs: [Product Overview](01-Product-Overview.md) ·
 
 ---
 
-## 1. Shared Pattern — One App, Three Actors
+## 1. Shared Pattern — capabilities drive the nav
+
+> The "one app, three actors" framing below is superseded (D-9); the
+> capability-and-role resolution it describes is still how every client
+> decides what to render.
 
 On login the client fetches the org's **capabilities** and the user's **roles**
 (the `Principal`, [05](05-Auth-And-RBAC.md) §2.1) and renders the matching nav set.
