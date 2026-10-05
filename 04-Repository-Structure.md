@@ -27,9 +27,10 @@ KukkuOne/                          # workspace root
 ├── kukkuone-database/             # hosts @kukkuone/db — Prisma schema, migrations, seed
 │
 ├── kukkuone-admin-web/            # React + Vite + TS + AntD — primary admin panel
-├── kukkuone-web/                   # ONE role-aware actor app (Farmer/Distributor/Supplier) — React + Vite + TS + AntD
+├── kukkuone-platform-web/          # Portal-style web, deploys as the worker `kukkuone-web` — React + Vite + TS + AntD
 │
-├── kukkuone-mobile/               # ONE Expo/React Native app (replaces 3 mobile folders)
+├── kukkuone-farmer-mobile/        # Flutter — farming only
+├── kukkuone-partner-mobile/       # Flutter — the five counterparty roles
 │
 ├── kukkuone-infrastructure/       # Docker Compose, local + deploy config
 ├── kukkuone-documentation/        # these docs
@@ -43,8 +44,10 @@ KukkuOne/                          # workspace root
     └── ui/                        # @kukkuone/ui         — shared React/AntD components
 ```
 
-> **`kukkuone-mobile` replaces the three scaffolded mobile folders.** The old
-> per-role mobile scaffolds are removed; there is exactly one role-aware Expo app.
+> **Superseded 2026-10-04 (D-9).** There are two mobile apps, both Flutter:
+> `kukkuone-farmer-mobile` and `kukkuone-partner-mobile`. The per-role
+> scaffolds (`kukkuone-hatchery-mobile`, `kukkuone-trading-partner-mobile`) are
+> absorbed into them.
 
 > **`kukkuone-database` hosts `@kukkuone/db`** — the single Prisma schema,
 > migrations, and seed. All services import the client from here; there is one
@@ -120,8 +123,9 @@ Root scripts delegate to Turbo:
 | `kukkuone-distributor-api` | app | Discovery, purchase, collection, settlement | NestJS + Prisma |
 | `kukkuone-database` | app/pkg | Prisma schema, migrations, seed; hosts `@kukkuone/db` | Prisma + PostgreSQL |
 | `kukkuone-admin-web` | app | Primary admin panel | React + Vite + TS + AntD |
-| `kukkuone-web` | app | ONE role-aware actor app (Farmer/Distributor/Supplier) | React + Vite + TS + AntD |
-| `kukkuone-mobile` | app | One role-aware mobile app (tabs by capability) | Expo / React Native |
+| `kukkuone-platform-web` | app | Portal-style web (deploys as `kukkuone-web`) | React + Vite + TS + AntD |
+| `kukkuone-farmer-mobile` | app | Farming only | Flutter |
+| `kukkuone-partner-mobile` | app | The five counterparty roles, one switcher | Flutter |
 | `kukkuone-infrastructure` | infra | Docker Compose, deploy config | Docker |
 | `kukkuone-documentation` | docs | Developer docs | Markdown |
 | `@kukkuone/types` | pkg | DTOs, enums, Principal, envelope | TypeScript |

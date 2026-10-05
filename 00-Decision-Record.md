@@ -48,6 +48,8 @@ Clients ──► kukkuone-api-gateway (NestJS)
 
 ## D-3 · Web — **one role-aware client app + a separate admin console** (updated)
 
+> **Superseded 2026-10-04 by [D-9](#d-9--client-set-two-flutter-apps-and-portal-style-web-2026-10-04).**
+
 - **Framework**: **React + Vite + TypeScript**.
 - **Two web apps only** (in the monorepo):
   - **`kukkuone-web`** — the **single role-aware actor app** for Farmers, Distributors, and Suppliers. Replaces the three separate `farmer-web` / `distributor-web` / `supplier-web` folders. Same capability-driven pattern as mobile (D-6): on login it reads the org's **capabilities + role** and renders the matching experience (Farmer first). Multi-capability orgs get an **actor switcher**.
@@ -84,6 +86,8 @@ Full design in **[05-Auth-And-RBAC](05-Auth-And-RBAC.md)**.
 ---
 
 ## D-6 · Mobile — **one Expo app, role-aware** (your choice + your question answered)
+
+> **Superseded 2026-10-04 by [D-9](#d-9--client-set-two-flutter-apps-and-portal-style-web-2026-10-04).**
 
 - **Stack**: **Expo (React Native + TypeScript)**, **Expo Router** (file-based nav), **tab layout**. Data: TanStack Query + Zustand. UI: React Native Paper (Material) — stable and fast for forms/tables. Secure token storage via `expo-secure-store`.
 - **How the three actors differ inside ONE app** (your question): on sign-in the app fetches the user's **Organization capabilities** (`Supplier`/`Farmer`/`Distributor`, per PRD §5) and **role**. A capability→navigation map renders the matching **tab set**:
@@ -139,6 +143,44 @@ Full detail in **[10-Environment-And-Config](10-Environment-And-Config.md)** and
 
 ---
 
+## D-9 · Client set — **two Flutter apps and portal-style web** (2026-10-04)
+
+Supersedes D-3's single role-aware web app and D-6's single Expo mobile app.
+
+**Mobile — all Flutter.**
+
+| App | Serves |
+|-----|--------|
+| `kukkuone-farmer-mobile` | Farming only |
+| `kukkuone-partner-mobile` | The five counterparty roles, behind one workspace switcher |
+
+Farming is split out deliberately, and the reasoning is worth keeping: it is a
+system of record filled in several times a day on a farm, offline, in Telugu, by
+someone whose whole job is the birds. The counterparty roles are a different
+kind of software — publish a catalogue or an offer, receive an order, agree
+terms, record a dispatch, settle. Putting both behind one switcher would serve
+neither audience. `FARMER` is still recognised in the partner app, shown as a
+workspace that lives in the other one, so an account holding it is never left
+wondering where the farm went.
+
+The partner app's five roles: **HATCHERY**, **FEED_SUPPLIER**,
+**TRADING_PARTNER**, **LIFTING_PARTNER** (all built) and **CHICKEN_RETAILER**
+(not built — its tabs say "Soon" rather than render an empty farmer screen).
+The catalogue lives in `kukkuone-partner-mobile/lib/roles.ts` and must be kept
+in step with `Capability` in `packages/types/src/enums.ts` by hand.
+
+`kukkuone-partner-mobile` was Expo / React Native 0.86 and is to be rebuilt in
+Flutter so both apps share one stack and one design system.
+
+**Web — portal style**, one per audience, mirroring the mobile split, plus the
+owner console `kukkuone-admin-web` (D-3's console stands).
+
+**Superseded scaffolds**, absorbed into the above: `kukkuone-hatchery-mobile`,
+`kukkuone-trading-partner-mobile`, `kukkuone-supplier-web`,
+`kukkuone-distributor-web`.
+
+---
+
 ## Evaluation of your original suggestions
 
 | Your suggestion | Verdict | Notes |
@@ -161,8 +203,8 @@ Full detail in **[10-Environment-And-Config](10-Environment-And-Config.md)** and
 - DB: **PostgreSQL + Prisma**, one shared instance, one `DATABASE_URL`
 - Auth: **pluggable**, default **Firebase Google**, swap by adapter + env
 - Admin super-user: **naptrixlabs@gmail.com**
-- Web: **React + Vite + TS + Ant Design** — **one role-aware `kukkuone-web`** + separate **`kukkuone-admin-web`** console
-- Mobile: **one Expo app**, tab layout, role-aware by org capability
+- Web: **React + Vite + TS + Ant Design** — **portal-style apps per audience** + separate **`kukkuone-admin-web`** console (D-9)
+- Mobile: **two Flutter apps** — `kukkuone-farmer-mobile` and `kukkuone-partner-mobile` (D-9)
 - Onboarding: user **selects capabilities (any/all)** at signup → app decides experience (web + mobile share it)
 - Config: **env-driven**, one connection, Docker Compose local, host-anywhere
 - Build order: **Farmer first**, then Distributor, then Supplier
