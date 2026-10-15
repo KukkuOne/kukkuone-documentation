@@ -85,6 +85,28 @@ Stages become the ones the app can drive: planned, active, ready, harvesting,
 closed. Selling birds from the app marks the batch sold once the shed is empty,
 and close follows. No stage ever draws a button it cannot act on.
 
+### 3.5 Store and Money, batch-wise (added 15 October 2026)
+
+The Store and Money tabs read batch by batch and keep their farm-wise and
+party-wise views underneath.
+
+| Tab | Leads with | Then | Detail lives on |
+|---|---|---|---|
+| **Store** | Stock on hand across farms, and a low-feed alert at 7 days or fewer (urgent at 3) with Order feed | One card per running batch: bags bought into its farm since placement, consumed, left, FCR, feed a bird, grams a bird a day, days left. Then each farm's store | The batch Feed segment: bags a day, per-bird figures |
+| **Money** | Where we stand: spent, earned, net, to collect, to pay | One line per batch: spent, earned, committed or profit, still to collect. Then accounts and who owes whom | The batch Money segment: result, cost by head, costs by day stacked by category, income by day, pending, lots |
+
+Feed is bought into a farm's store, not into a batch, so "bought" on a batch
+card is the farm's purchases since the batch was placed, and a farm with two
+running batches says the purchases are shared rather than splitting them.
+
+Days of feed left is one computation everywhere: the farm's stock over the
+combined feed a day of its running batches across their last seven logs.
+
+UI rules this work added to the house rulebook
+(`.claude/skills/mobile-ui-quality/SKILL.md`): one gutter for every card, a
+right-hugging trailing value, figures joined to their units, one number one
+computation, and one series per chart.
+
 ### 3.4 What stays as it is
 
 The daily log form, the offline write queue, the place-batch flows, the partner
