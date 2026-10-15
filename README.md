@@ -36,6 +36,7 @@ This folder is the **single source of truth** for building KukkuOne. Read the do
 | 11 | [Local Setup & Deploy](11-Local-Setup-And-Deploy.md) | Run everything locally (Docker Compose), host-anywhere deploy |
 | 12 | [API Conventions](12-API-Conventions.md) | REST conventions, gateway routing, errors, pagination, versioning |
 | 13 | [Roadmap & Milestones](13-Roadmap-And-Milestones.md) | Phased plan, farmer-first, milestones mapped to acceptance criteria |
+| 15 | [Batch-Centric Redesign](15-Batch-Centric-Redesign.md) | Audit of the farmer app, the three-tab batch-first design, and its phases |
 
 ---
 
