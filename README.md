@@ -37,6 +37,8 @@ This folder is the **single source of truth** for building KukkuOne. Read the do
 | 12 | [API Conventions](12-API-Conventions.md) | REST conventions, gateway routing, errors, pagination, versioning |
 | 13 | [Roadmap & Milestones](13-Roadmap-And-Milestones.md) | Phased plan, farmer-first, milestones mapped to acceptance criteria |
 | 15 | [Batch-Centric Redesign](15-Batch-Centric-Redesign.md) | Audit of the farmer app, the three-tab batch-first design, and its phases |
+| 16 | [Health Intelligence](16-Health-Intelligence.md) | The vet loop, the vet app, the four layers of analysis, and its phases |
+| 17 | [AI Engine Boundary](17-AI-Engine-Boundary.md) | Read-side only: what the engine owns, what it never writes, and what that cancels |
 
 ---
 

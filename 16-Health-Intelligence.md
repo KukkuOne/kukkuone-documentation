@@ -1,0 +1,203 @@
+# 16 · Health Intelligence and the Vet Loop
+
+Status: proposed, 1 November 2026. Extends the Health and Growth segments of
+15 §3.2, and builds the Intelligence extension point named in 01 §3.2.
+
+## 1. The ask
+
+A farmer photographs what worries them in a batch. A vet looks, marks the
+lesion on the photo, names the disease, prescribes, and visits when the photos
+are not enough — photographing what they find for the record. Everything a
+batch carries feeds prediction: disease, growth, and FCR.
+
+## 2. What the audit found
+
+Read-only passes over the four APIs, the schema, the gateway and the farmer
+app. Three quarters of this is built or modelled already.
+
+**The data is there.** `DailyLog` holds deaths, culls, feed, water,
+temperature, humidity, a weight sample and uniformity per day;
+`WeightRecord`, `FeedConsumption`, `MedicineUsage` and `VaccinationSchedule`
+hang off the batch; `BreedStandard` gives the curve to read against. Alerts
+already compute mortality spike, cumulative mortality, weight behind standard
+and FCR drift (`alerts.service.ts:7-12`).
+
+**The case is modelled in full.** `VetCase` with its six statuses,
+`CaseMedia` with six photo kinds, `CaseFinding` with organ, lesion, severity
+and a `region` box on a named photo, `CaseDiagnosis` with a ranked disease, an
+evidence grade and advice, `VetVisit` with birds examined and a fee, and
+`trainingConsent` with its own timestamp on the case.
+
+**Only the farm's half is built.** Raise, consent, attach a photo, read one
+back (`kukkuone-farmer-api/src/vet`). There is no endpoint that writes a
+finding, a diagnosis, a visit or a status, and no surface a vet can open.
+`Capability.VET` and `VET_PRACTITIONER` exist in `rbac.ts` and are wired to
+nothing.
+
+**Five faults sit in the way.**
+
+| Fault | Where |
+|---|---|
+| `vetOrgId` is never written by any code, so a raised case can reach no vet | `vet.service.ts:90` |
+| The case queries filter on `orgId` alone, so a vet's principal reads an empty list | `vet.service.ts:33`, `:42`, `:235` |
+| The gateway knows three domains and `forward()` conflates the URL prefix with the upstream name | `proxy.controller.ts:18`, `:48` |
+| The catalogue is 14 entries and nothing serves it, so a vet picking a disease has no list to pick from | `prisma/diseases.ts` |
+| `water`, `tempC` and `humidity` are written and read by nothing; humidity is not on the log form | `batches.service.ts:569-572` |
+
+`readMedia` is the exception and the model for the rest: it already admits the
+assigned vet as a guest on farm data (`vet.service.ts:213`).
+
+**No AI anywhere.** No provider, no key, no inference path, no weather.
+
+## 3. The design
+
+### 3.1 One app for the vet, no new service
+
+A vet works in `kukkuone-vet-mobile`, Flutter, a fifth app on the pattern of
+04 §7. Vets are their own organisations — a panel of practices, not
+employees — which `VetCase.vetOrgId` already assumed and which onboarding
+already supports, since `VET` is a capability an org may select at signup.
+
+The vet's half of the API does **not** get a service of its own. It goes into
+the existing `kukkuone-farmer-api/src/vet` module, scoped by `vetOrgId`
+instead of `orgId`, for the reason that module already states: the data is
+farm data and a vet is a guest on it rather than the owner of a separate
+record. The gateway gets an `api/v1/vet/*` route, `vet: ['VET']` in
+`DOMAIN_CAPABILITIES`, and a domain-to-upstream lookup so the `vet` prefix
+reaches the farmer service. Auth, OTP, workspaces, members and scopes are
+untouched.
+
+### 3.2 The endpoints
+
+| Route | Does | Writes |
+|---|---|---|
+| `GET /vet/cases` | the queue, by `vetOrgId`, most urgent first | — |
+| `GET /vet/cases/:id` | the case, its photos, and the batch's numbers | — |
+| `POST /vet/cases/:id/claim` | take an unassigned case | `vetOrgId`, `vetUserId`, → `TRIAGED` |
+| `POST /vet/cases/:id/findings` | organ, lesion, severity, the box on the photo | `CaseFinding` |
+| `POST /vet/cases/:id/diagnoses` | the ranked disease, evidence, advice, medicine | `CaseDiagnosis` |
+| `POST /vet/cases/:id/visit` | a visit is needed, or happened | `VetVisit`, → `VISIT_NEEDED` / `VISITED` |
+| `POST /vet/cases/:id/media` | the vet's own post-mortem photos | `CaseMedia` |
+| `POST /vet/cases/:id/close` | close it | → `CLOSED`, `closedAt` |
+| `GET /vet/diseases` | the catalog to pick from | — |
+
+### 3.3 The app
+
+| Screen | Shows | Enters |
+|---|---|---|
+| **Queue** | Cases by urgency: dying now, raised today, waiting on a visit. Farm, batch age, birds affected, first photo | Claim |
+| **Case** | The photos large, the complaint, and the batch beside them: age, mortality today and cumulative, weight against standard, feed and water trend, shed and outside temperature, vaccinations given, what is already medicated | Ask the farm a question |
+| **Mark** | One photo, full screen | Draw a box, pick organ, lesion, severity |
+| **Diagnose** | The ranked shortlist, the catalog | Up to three diseases, evidence grade, advice, medicine with dose, duration and withdrawal days |
+| **Visit** | Schedule, then the visit itself | Post-mortem photos, birds examined, summary, fee |
+
+A vet diagnosing from a photo alone is guessing, so the batch context on the
+Case screen is not decoration — it is most of the diagnosis.
+
+### 3.4 Routing a case
+
+The farmer picks their vet, from the practices on the platform matched against
+the farm's own `PartyKind.VET` parties. A farm with no vet of its own raises
+into the pool, where any panel practice may claim it. No admin routing.
+
+### 3.5 Four layers of analysis, and only one needs a model
+
+| Layer | What | Needs |
+|---|---|---|
+| 0 | FCR, mortality curve, weight against standard, feed cover — and the two new signals in §3.6 | Arithmetic. Built, extend it |
+| 1 | Weather per farm per day, and a three-day forecast | One provider, one cached table |
+| 2 | Projected harvest weight, date, FCR at close, margin at close | The breed curve and the batch's own growth ratio. No ML |
+| 3 | Vision triage of a case's photos against its batch context | Claude, with the catalog as the answer set |
+| 4 | A model of our own, on vet-confirmed labels | A few thousand confirmed cases. Later, or never |
+
+Layer 3 runs once when a case is raised with photos, and writes
+`CaseDiagnosis` rows ranked 1–3 with `evidence: PRESUMPTIVE` and
+`diagnosedBy: 'ai'`. Its job is to sort the vet's queue and narrow the
+question, never to answer the farmer: a vision model is fair on gross lesions
+and unreliable on the subtle ones that matter most. What the farmer sees
+before a vet signs is urgency and first aid — isolate, do not medicate yet,
+a vet in four hours. Prescribing on a model's guess is the one thing in this
+product that can harm birds, the people who eat them, and us.
+
+Agreement between the AI's rank 1 and the vet's confirmed diagnosis is the
+metric that says whether Layer 3 earns its cost.
+
+Layer 4 trains only on cases where `trainingConsent` is true. Disease history
+is commercially damaging, and a farm must be able to show a vet without
+donating the photos to a dataset.
+
+### 3.6 Signals we already store and never read
+
+| Signal | From | Says |
+|---|---|---|
+| Water to feed, ~1.8–2.0:1 and rising with heat | `DailyLog.water`, `feedConsumed` | A fall precedes visible sickness and mortality by a day or two; a spike is heat stress or a leak. The earliest signal in the whole dataset |
+| Heat stress | `DailyLog.tempC`, `humidity`, and the weather feed | Above about 29 °C with high humidity, intake falls and FCR drifts — which otherwise reads as a growth fault |
+| Shed against outside | the same two | Separates bad ventilation from a hot day |
+| Season | the weather feed | Coccidiosis after wet litter, CRD after cold nights. A prior for Layer 3 |
+
+Humidity joins the daily log form. `WeatherDay(farmId, date, tempMin, tempMax,
+humidity, rainfall)` is pulled daily per farm location and cached; the
+forecast gives a forward alert — 38 °C on Thursday, fit the foggers, feed in
+the cool hours — which is the first alert in the system that arrives before
+the damage.
+
+### 3.7 Three obligations the health module carries
+
+- **Withdrawal.** `MedicineUsage` exists and nothing stops a batch reaching
+  harvest inside the withdrawal window. Residue in meat is the largest real
+  liability here. Mark-ready and sale are blocked, with the clear date on the
+  batch's Health segment.
+- **Notifiable disease.** `Disease.notifiable` is already a column. A
+  confirmed notifiable case is a reporting obligation, not an alert card.
+- **Area outbreak.** Cases across farms carry locations. "Three farms within
+  15 km confirmed CRD this week" warns a farmer and primes Layer 3.
+  Aggregate only; another farm is never named.
+
+### 3.8 What stays as it is
+
+The farm's half of the case and its screens, the raw-body photo upload and its
+private read path, consent, the daily log form apart from humidity, the
+alerts and their settings, the batch hub of doc 15, auth and onboarding.
+
+## 4. Defaults chosen, and what to say to change them
+
+- **Vets are a panel of their own organisations.** Say "in-house vets" and it
+  becomes one org with no claim step and no pool.
+- **The farmer picks, the pool catches the rest.** Say "pool only" to drop the
+  picker, or "admin routes" to move it to `kukkuone-admin-web`.
+- **No AI diagnosis reaches the farmer before a vet signs it.** Say "show the
+  AI to the farmer" to reverse it, knowing §3.5.
+- **The vet app has no offline write queue**, only a local draft of the open
+  diagnosis. Say "offline vet app" to carry farmer-mobile's queue across.
+- **Weather from Open-Meteo**, free and keyless, daily min, max, humidity and
+  rain. Say the provider to change it.
+
+## 5. Phases
+
+Each phase ends green on the API tests, the Flutter suites of both apps, and a
+simulator walk. Phase 5 is independent of every other and may go any time.
+
+| # | Phase | Lands | Proof |
+|---|---|---|---|
+| 0 | Catalog | ~25 diseases seeded with Telugu names and the notifiable flag; `GET /vet/diseases` | Seed test; the list on a device |
+| 1 | The vet's half | The `vet` domain in the gateway; findings, diagnoses, visit, media, close; the case queries admit the assigned vet | A test per endpoint; a vet principal reads a case it was given and nothing else |
+| 2 | Routing | The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
+| 3 | The app | `kukkuone-vet-mobile`: queue, case, diagnose, close | The loop end to end on two simulators, no AI involved |
+| 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
+| 5 | The signals we hold | Water to feed, heat stress, humidity on the form, `WeatherDay` and the forward alert | Alert tests at the thresholds; the July batch's figures unchanged |
+| 6 | Triage | Layer 3 on raise, ranked and presumptive; the agreement metric | A fixture case returns three ranked rows; the farmer sees urgency only |
+| 7 | Forecast | Projected weight, date, FCR and margin at close on the Growth segment | Back-tested against closed batches |
+
+Phase 3 is the checkpoint. If vets will not use the app, no amount of AI
+saves it. Phases 6 and 7 are worth nothing before phase 1 of doc 15 — the
+figures an AI reasons over have to be right first.
+
+## 6. Cross-references
+
+- 15 §3.2 — the Health and Growth segments this fills
+- 06 — `VetCase`, `CaseMedia`, `CaseFinding`, `CaseDiagnosis`, `Disease`, `VetVisit`
+- 05 — `Capability.VET`, `VET_PRACTITIONER`, and the guest read in `readMedia`
+- 12 §gateway routing — the `vet` domain
+- 14 LOGIC-09 — a spending cap on the AI provider before phase 6 ships
+- 17 — the engine boundary: phases 5 to 7 compute inside farmer-api, and
+  anything separate reads farm data rather than keeping its own copy
