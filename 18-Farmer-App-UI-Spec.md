@@ -156,7 +156,8 @@ tapped with gloves on.
 > `Guttered.inset(context)` before adding its own margin, or it lands 32pt in
 > while the card below it sits at 16. The batch screen shipped exactly that
 > bug — hero and segment control at 32, cards at 16 —
-> and `test/alignment_test.dart` now measures the edges of nine screens.
+> and `test/alignment_test.dart` measures the edges of every screen — 70 of
+them; the other 8 draw no house surface and are named in the test.
 
 ### 2.5 Motion
 
@@ -416,13 +417,13 @@ Design decisions worth a reviewer's attention:
 | Test | Enforces |
 |---|---|
 | `screens_test` | all 62 screens mount at 320×568 in English and Telugu, in light and dark, with a 3:1 contrast floor and a check that no skeleton is still showing |
-| `alignment_test` | nine screens' cards share the 16pt gutter |
+| `alignment_test` | **every** screen's cards share the 16pt gutter — 70 measured, 8 named as drawing no house surface |
 | `telugu_test` | en/te ARB parity — key sets only, which is why §9.11 exists |
 | `no_hardcoded_strings_test` | user-facing English in the source |
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-998 tests pass at the commit this document describes.
+1068 tests pass at the commit this document describes.
 
 ---
 
@@ -606,6 +607,22 @@ Matching also trims as well as lowercases: the breed is typed on the placement
 form and the standard on its own screen, months apart, and a trailing space is
 not a different breed. One predicate, shared by the chart and the row, so the
 two cannot disagree about whether a standard exists.
+
+**9.12 — FIXED 4 November. A card that was invisible to the gutter test.**
+`alignment_test` measured **nine** screens by name while the registry holds
+79. Extended to all of them it found no drift on the 61 nobody had measured —
+the gutter contract is kept — but it did find one card it could not see at
+all.
+
+The finished-batch card on the Batches tab painted `N.surface` at `N.r` inside
+an `N.line` border, which is `Tile` written out again, so a sweep that
+measures house surfaces had nothing to measure. It is a `Tile` now. `Pressable`
+stays outside it, because `Tile`'s own `onTap` is a bare `GestureDetector`
+with no press feedback and a card that acts has to look like it acts — which
+is worth a second look in the design layer, not a change made in passing.
+
+The 8 screens that genuinely draw no house surface are named in the test
+rather than silently skipped, so one that starts drawing cards is noticed.
 
 **9.11 — PART FIXED 4 November; thirty-nine keys still await a Telugu
 speaker.** `telugu_test` compares the two key *sets*, and the source lints of
