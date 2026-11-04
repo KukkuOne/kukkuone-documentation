@@ -412,35 +412,54 @@ Design decisions worth a reviewer's attention:
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-911 tests pass at the commit this document describes.
+912 tests pass at the commit this document describes.
 
 ---
 
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
+9.1 and 9.2 were fixed the same day; the rest are open.
 
-**9.1 — Seven figure labels are English on a Telugu phone.** `Fig`'s label is
-its *second* argument and `no_hardcoded_strings_test` only inspects `Heading(`
-and `Text(`, only matches a **capitalised** first letter, and only single
-quotes. Figure captions are rendered upper-case by `NT.label`, so they are
-naturally written lower-case in source — precisely the shape the lint cannot
-see.
+**9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
+`Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
+inspected `Heading(` and `Text(`, only matched a **capitalised** first letter,
+and only single quotes. Figure captions are upper-cased on screen by
+`NT.label`, so they are naturally written lower-case in source — precisely the
+shape the lint could not see. The audit first counted seven; a scan that reads
+multi-line calls found nine.
 
-| File | Label |
-|---|---|
-| `money_screen.dart:477,479,482` | `'owed'`, `'past terms'`, `'buyers'` |
-| `money_screen.dart:542,543` | `'owing'`, `'suppliers'` |
-| `reports_screen.dart:392,393` | `'sold'`, `'batches'` |
+| File | Label | Now reads |
+|---|---|---|
+| `money_screen.dart:477,479,482` | `'owed'`, `'past terms'`, `'buyers'` | `figOwed`, `figPastTerms`*, `figBuyers`* |
+| `money_screen.dart:542,543` | `'owing'`, `'suppliers'` | `figOwing`, `figSuppliers`* |
+| `reports_screen.dart:380,385` | `'a bird'`, `'margin'` | `figABird`, `trajectoryMargin` |
+| `reports_screen.dart:392,393` | `'sold'`, `'batches'` | `figSold`, `figBatches` |
 
-Fix: move the seven into both ARBs, then widen the lint to `Fig`, `Cell`,
-`Empty`, `StatusPill`, `PrimaryButton` and to lower-case and double-quoted
-literals. The lint gap is the real defect; the seven strings are its symptom.
+Six of the nine already had a key with a Telugu translation and were simply
+not using it. Three were new (*), and their Telugu follows constructions the
+ARB already carries — `కొనుగోలుదారులు` is the plural `figOwedByBuyers` already
+uses, and `బ్యాచ్‌లు` is how `figBatches` pluralises.
 
-**9.2 — Loose English in interpolations.** `'${…} days'`
-(`close_batch_screen.dart:138`, `sell_birds_screen.dart:391`) and
-`'of $target'` (`overview_charts.dart:386`) are untranslated words inside
-otherwise localised strings.
+**The lint gap was the real defect**, so a sixth test now reads the label
+*position* rather than the shape of the words, and cares about neither case
+nor quote nor interpolation: the second argument of a `Fig`, the first of a
+`Heading` or `SectionHeader`, and any `label:`, `header:` or `caption:`. It
+ignores a literal carrying no word outside an interpolation (`' · '`,
+`'${n} '`) and it leaves `options[]` keys alone, which must never be
+translated. Verified by reintroducing `'owed'` and watching it fail with the
+right file and line.
+
+**9.2 — FIXED 4 November. Loose English inside interpolations.**
+`overview_charts.dart:386` read `label: 'of $target'` on the Overview ring and
+now reads `ovOfTarget`, whose Telugu `{target}లో` matches the construction
+`lifecycleStageOf` already uses. `supplier_payment_screen.dart:219` built
+`'{n} day/days · {n}-day terms'` with the plural chosen by a ternary, and now
+composes `dayCount` and `creditDaysTerms`, both of which already existed.
+
+Still open: `'${…} days'` in `close_batch_screen.dart:138` and
+`sell_birds_screen.dart:391`. Both are inside `Text(`, not a label argument,
+so the new lint does not reach them; the prose ratchet already counts them.
 
 **9.3 — Eleven screens never mounted by `screens_test`.** They have never been
 checked for Telugu overflow at 320pt: `Accounts`, `AccountEntry`,
@@ -461,9 +480,12 @@ English sentence.
 and `widgets/charts.dart:33-36` four more. Both sit outside `core/design/`, so
 light mode cannot re-resolve them.
 
-**9.6 — Bare `Row` of `Fig`.** `money_screen.dart:475` and `:540` build figure
-rows by hand instead of `Figures([...])`, bypassing the three-item assert; the
-second carries only two figures.
+**9.6 — Bare `Row` of `Fig`.** `money_screen.dart:475` and `:540` and
+`reports_screen.dart:374` build figure rows by hand instead of `Figures([...])`,
+bypassing the three-item assert. One carries two figures and the Reports one
+carries **four** — "a bird · margin · sold · batches" — which the assert exists
+to stop. Found while fixing 9.1; the labels are localised now but the row
+shape is unchanged.
 
 **9.7 — `SignInScreen` uses a raw Material `Scaffold`.** The first screen every
 user meets is the one screen that does not use a house scaffold.
