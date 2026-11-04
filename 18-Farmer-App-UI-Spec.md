@@ -296,7 +296,10 @@ its label, because a translated key falls through its own switch silently.
 
 **Money.** Paise end to end, divided only where printed: `money(paise / 100)`.
 **Indian digit grouping** — `₹1,71,500`, never `₹171,500`. Never
-`toStringAsFixed` into a currency string.
+`toStringAsFixed` into a currency string. An **amount** takes `money()`, which
+rounds to whole rupees; a **unit rate** takes `rate()`, which keeps its paise
+and groups the same way. Exports and PDFs are held to this too — they outlive
+the screen that produced them.
 
 **Figures.** Null is `—`, never `0`: a figure with no data and a figure that is
 genuinely zero are different facts, and showing a bill as `₹0` before it exists
@@ -412,14 +415,14 @@ Design decisions worth a reviewer's attention:
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-990 tests pass at the commit this document describes.
+991 tests pass at the commit this document describes.
 
 ---
 
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1, 9.2 and 9.3 were fixed the same day; the rest are open.
+9.1 to 9.4 were fixed the same day; the rest are open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -489,13 +492,28 @@ skeleton has not been checked" assertion the audit would have passed against a
 blank page. The override now hands it the same pure `storeLedger()` the app
 runs, over fixtures already in the harness, so the arithmetic stays under test.
 
-**9.4 — Currency built by hand, without Indian grouping.**
-`medicine_purchase_screen.dart:256`, `place_batch_screen.dart:287`,
-`place_chicks_screen.dart:257`, `sell_birds_screen.dart:454` and
-`feed_purchase_screen.dart:247` interpolate `toStringAsFixed(2)` after a `₹`.
-A five-figure rate prints `₹100000.00` where the rest of the app prints
-`₹1,00,000`. `feed_purchase_screen.dart:247` additionally carries a hardcoded
-English sentence.
+**9.4 — FIXED 4 November. Currency built by hand, without Indian grouping.**
+The audit found five sites; there were **eight**. Seven screens built a unit
+rate as `'₹${x.toStringAsFixed(2)}'`, so a five-figure feed rate read
+`₹100000.00` beside a total reading `₹1,00,000`.
+
+`money()` could not stand in for them: it rounds to whole rupees, and ₹36.50 a
+chick is not ₹37 a chick — on 3,500 birds the difference is ₹1,750. So
+`formatters.dart` gains `rate()`, grouped the same way and keeping its paise,
+with a test for the distinction between the two.
+
+The eighth site is the one that matters most and was not on the UI at all:
+`export_service.dart:22` built its own `'₹672988'` for the **settlement PDF**,
+a sheet that sits in somebody's downloads folder for a year reading
+differently from every screen it was printed from.
+
+Two further defects sat on the same lines. Sell birds printed a lot's weight
+with `toStringAsFixed(0)`, so a 9,125 kg lot read "9125 kg" against an amount
+grouped as ₹9,12,500. And the feed purchase title chose `'bag'` or `'bags'`
+with a ternary, in English — which `bagsCount` already exists for, and which
+the existing ternary lint missed because it looks for a capital letter. That
+is the same blind spot §9.1 closed for label arguments; it is still open for
+ternaries.
 
 **9.5 — Chart colours baked into feature files.**
 `overview/dashboard_charts.dart:56-61` holds six literal `Color(0xFF…)` values
