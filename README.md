@@ -39,6 +39,7 @@ This folder is the **single source of truth** for building KukkuOne. Read the do
 | 15 | [Batch-Centric Redesign](15-Batch-Centric-Redesign.md) | Audit of the farmer app, the three-tab batch-first design, and its phases |
 | 16 | [Health Intelligence](16-Health-Intelligence.md) | The vet loop, the vet app, the four layers of analysis, and its phases |
 | 17 | [AI Engine Boundary](17-AI-Engine-Boundary.md) | Read-side only: what the engine owns, what it never writes, and what that cancels |
+| 18 | [Farmer App UI Spec](18-Farmer-App-UI-Spec.md) | The farmer app's tokens, components, scaffolds and screens, with the deviations an audit found |
 
 ---
 
