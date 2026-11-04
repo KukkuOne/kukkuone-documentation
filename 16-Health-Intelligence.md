@@ -181,7 +181,7 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 |---|---|---|---|
 | 0 | Catalog | ~25 diseases seeded with Telugu names and the notifiable flag; `GET /vet/diseases` | Seed test; the list on a device |
 | 1 | The vet's half | **API done, 4 Nov.** The `vet` domain in the gateway; findings, diagnoses, visit, media, close; the case queries admit the assigned vet | A test per endpoint; a vet principal reads a case it was given and nothing else |
-| 2 | Routing | The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
+| 2 | Routing | **API done, 4 Nov.** The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
 | 3 | The app | `kukkuone-vet-mobile`: queue, case, diagnose, close | The loop end to end on two simulators, no AI involved |
 | 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
 | 5 | The signals we hold | Water to feed, heat stress, humidity on the form, `WeatherDay` and the forward alert | Alert tests at the thresholds; the July batch's figures unchanged |
@@ -222,8 +222,32 @@ Deployed: farmer-api `90d4de0f`, gateway `f0b2ef4c` in production; `fdd5663e`
 and `7f37fbc7` on dev. Inert in production, because no org holds `VET` there —
 the dev database has a seeded practice and the catalogue to try it against.
 
-**Not built: `vetOrgId` on raise.** A farm cannot yet choose its vet, so every
-case goes to the pool. That is phase 2.
+## 5b. What phase 2 landed
+
+`vetOrgId` is written now, on both paths: `raise` takes the vet the farm
+picked, and `claim` takes a case out of the pool. Both proofs §5 asks for are
+met, and the one that needed care is claiming — it is conditional on the case
+still being unclaimed, so two vets opening the pool together do not both
+believe they have it.
+
+`GET /farmer/vet/practices` is the picker. §3.4 says the farmer picks from the
+practices on the platform "matched against the farm's own `PartyKind.VET`
+parties", and **matched** needed saying plainly: `Party` carries no link to an
+`Organization`, because a farm's vet is a name and a phone number in their own
+address book, written down long before that vet had an account. So the join is
+the phone, compared on its last ten digits — `+91 98765 43210`, `09876543210`
+and `919876543210` are one farm's one vet.
+
+`Party.linkedOrgId` would be tidier and is not worth a forward-only migration
+in both schemas for a flag on a picker. If a second thing ever needs that
+link, that is the moment to add it.
+
+The farm's own vet leads the list and everybody else follows alphabetically: a
+farm whose vet has no account yet still needs somebody to send to, and a list
+of one with a dead end beside it is worse than a list.
+
+**Not built: the picker itself**, on the farmer app's Ask a vet sheet. The API
+answers; nothing asks it yet.
 
 ---
 
