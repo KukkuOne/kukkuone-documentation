@@ -422,14 +422,14 @@ Design decisions worth a reviewer's attention:
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-997 tests pass at the commit this document describes.
+998 tests pass at the commit this document describes.
 
 ---
 
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 to 9.6, 9.8 and 9.10 were fixed the same day and 9.7 was mostly withdrawn; 9.9 and 9.11 are open.
+9.1 to 9.6, 9.8 and 9.10 were fixed the same day, 9.9 partly, and 9.7 was mostly withdrawn; 9.11 is open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -623,11 +623,28 @@ baseline already makes for itself. They are **frozen by key** in
 translated one left in the list, so the debt is visible, attributable, and
 cannot quietly grow. Clearing it needs a Telugu speaker, not a model.
 
-**9.9 — Density, not correctness.** The hero occupies roughly 240pt on all five
-segments, and the Today segment's stage card spends about 290pt on a progress
-bar, "Stage 2 of 5", a stage name, a caption that repeats the three buttons
-directly beneath it, a full-width button and a disclosure link. "Mark ready for
-harvest" is also a four-word commit label against a one-or-two-word rule.
+**9.9 — PARTLY FIXED 4 November; the rest is the reviewer's call.** Two of
+the three were rule-breaches rather than judgement, and are done.
+
+The stage card's caption on Growing read "Log the day — feed, deaths, weight."
+directly above the buttons Log today, Mortality and Feed used. It goes when
+those buttons are there, and only for Growing — Ready and Harvesting say
+something the buttons do not. The condition lives at the call site that knows
+whether the buttons render, and the card is told, so the two cannot disagree.
+
+The button read "Mark ready for harvest": four words against a one-or-two-word
+rule, and the odd one out beside Place chicks, Record a lift and Close the
+batch. It is "Mark ready"; the sheet it opens keeps the long form as its
+title, where there is room to say what is being marked.
+
+Together those lift **What has happened** onto the first screen, where before
+it sat below the fold.
+
+**Left alone deliberately: the hero's height.** It is ~240pt on all five
+segments, already down from ~280 since the ring went from 148 to 104. Whether
+the lower four segments should collapse it to a line is a decision about what
+the product is, not a rule being broken, and §10 question 1 asks it rather
+than assuming an answer.
 
 **9.10 — FIXED 4 November, in the API, and the fixture is the lesson.**
 The Farms tab printed `—` for WEIGHT and FCR on a shed whose own batch screen,
@@ -856,9 +873,11 @@ Preparing variant: the hero collapses to “Preparing shed” + chicks due.
 │ ╭──────────────────────────────────────────────────────╮ │  StageTimeline
 │ │ ███████ ███████ ░░░░░░ ░░░░░░ ░░░░░░                 │ │  5 stage bars
 │ │ Stage 2 of 5                                         │ │  NT.label
-│ │ Growing                                              │ │  NT.title
-│ │ Log the day — feed, deaths, weight.                  │ │  stage caption
-│ │ [         Mark ready for harvest          ]          │ │  PrimaryButton
+│ │ Growing                                              │ │  NT.title. The caption
+│ │                                                      │ │  the buttons repeat is
+│ │                                                      │ │  gone (§9.9)
+│ │ [               Mark ready                ]          │ │  PrimaryButton — two
+│ │                                                      │ │  words, like the rest
 │ │ All five stages ⌄                                    │ │  disclosure
 │ ╰──────────────────────────────────────────────────────╯ │
 │ [ Log today ] [ Mortality ] [ Feed used ]                │  QuickBar — only while
