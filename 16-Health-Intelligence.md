@@ -246,8 +246,21 @@ The farm's own vet leads the list and everybody else follows alphabetically: a
 farm whose vet has no account yet still needs somebody to send to, and a list
 of one with a dead end beside it is worse than a list.
 
-**Not built: the picker itself**, on the farmer app's Ask a vet sheet. The API
-answers; nothing asks it yet.
+The picker is on the farmer app's Ask a vet sheet, between the batch and the
+bird counts. It reads **"Any vet"** when nothing is picked rather than sitting
+empty: a farm raising into the pool has answered the question, and a blank row
+would read as an unfinished form on a sheet somebody is filling in with dying
+birds in front of them.
+
+Deployed 4 November: farmer-api `4c66c562` in production, `7afe41bb` on dev.
+Inert in production — no org holds `VET` there, so the practices list comes
+back empty and every case still goes to the pool. **The app half is built and
+not released**; it goes out with the next farmer-app build.
+
+One thing a sign-out test caught that a reading would not: `vetPracticesProvider`
+looks platform-wide, but its `known` flag is computed against the farm's own
+parties, so it is account data and must be dropped when somebody signs out. It
+watches `sessionProvider`, like `vetCasesProvider` beside it.
 
 ---
 
