@@ -416,7 +416,7 @@ Design decisions worth a reviewer's attention:
 
 | Test | Enforces |
 |---|---|
-| `screens_test` | all 62 screens mount at 320×568 in English and Telugu, in light and dark, with a 3:1 contrast floor and a check that no skeleton is still showing |
+| `screens_test` | all 62 screens mount at 320×568 in English and Telugu, in light and dark, with a 3:1 contrast floor, a 44pt tap-target floor, and — in both the contrast and the Telugu sweeps — a check that no skeleton is still showing |
 | `alignment_test` | **every** screen's cards share the 16pt gutter — 70 measured, 8 named as drawing no house surface |
 | `telugu_test` | en/te ARB parity — key sets only, which is why §9.11 exists |
 | `no_hardcoded_strings_test` | user-facing English in the source |
@@ -424,6 +424,13 @@ Design decisions worth a reviewer's attention:
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
 1070 tests pass at the commit this document describes.
+
+Every sweep above runs over **every screen in the harness**, which was not
+true when this document was written: `alignment_test` measured nine of them
+(§9.12) and `screens_test` never mounted eleven (§9.3). Tap targets and the
+Telugu and contrast sweeps already covered all of them. The guard each sweep
+carries matters as much as its coverage — a screen still showing a skeleton
+has laid out nothing, and "it did not throw" is true of a blank page.
 
 ---
 
