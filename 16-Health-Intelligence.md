@@ -180,7 +180,7 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 | # | Phase | Lands | Proof |
 |---|---|---|---|
 | 0 | Catalog | ~25 diseases seeded with Telugu names and the notifiable flag; `GET /vet/diseases` | Seed test; the list on a device |
-| 1 | The vet's half | The `vet` domain in the gateway; findings, diagnoses, visit, media, close; the case queries admit the assigned vet | A test per endpoint; a vet principal reads a case it was given and nothing else |
+| 1 | The vet's half | **API done, 4 Nov.** The `vet` domain in the gateway; findings, diagnoses, visit, media, close; the case queries admit the assigned vet | A test per endpoint; a vet principal reads a case it was given and nothing else |
 | 2 | Routing | The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
 | 3 | The app | `kukkuone-vet-mobile`: queue, case, diagnose, close | The loop end to end on two simulators, no AI involved |
 | 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
@@ -191,6 +191,41 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 Phase 3 is the checkpoint. If vets will not use the app, no amount of AI
 saves it. Phases 6 and 7 are worth nothing before phase 1 of doc 15 — the
 figures an AI reasons over have to be right first.
+
+## 5a. What phase 1 landed
+
+Built 4 November, deployed the same day from a clean archive of `develop`.
+
+- **The gateway** gained a `vet` domain. `forward()` had built the upstream
+  URL out of the domain alone, so the URL prefix, the service and the upstream
+  path were one word; `DOMAIN_ROUTE` separates them, which is what lets
+  `/api/v1/vet/*` be served by farmer-api. That is the fault §2 records at
+  `proxy.controller.ts:18` and `:48`, now closed.
+- **Eight endpoints** under `api/farmer/vet-desk` — the queue, one case,
+  claim, findings, diagnoses, visit, close, the catalogue — plus the vet's own
+  photo upload and read. Not `api/farmer/vet`: the farm's half already answers
+  there scoped by `orgId`, and one path cannot serve two queues.
+- **The scoping fault is closed.** §2 records it three times: the case queries
+  filter on `orgId`, and a vet's org never owns the case. The vet's half
+  filters on `vetOrgId`, in one tested predicate rather than three inline
+  `where` clauses.
+- **A vet sees their own cases and the unclaimed pool**, and the pool stops at
+  RAISED. Claiming is conditional, so two vets opening the pool together do
+  not both believe they have it. Nothing may be written onto a case nobody has
+  claimed — a finding with no one answerable for it is training data nobody
+  signed.
+- **The case carries the batch's figures**, read from `BatchesService.summary`
+  rather than computed again. A batch whose numbers disagree with the farmer's
+  screen would be worse than no numbers.
+
+Deployed: farmer-api `90d4de0f`, gateway `f0b2ef4c` in production; `fdd5663e`
+and `7f37fbc7` on dev. Inert in production, because no org holds `VET` there —
+the dev database has a seeded practice and the catalogue to try it against.
+
+**Not built: `vetOrgId` on raise.** A farm cannot yet choose its vet, so every
+case goes to the pool. That is phase 2.
+
+---
 
 ## 6. Cross-references
 
