@@ -221,7 +221,7 @@ navigator leaves an invisible sheet swallowing every tap on the screen beneath.
 | Component | Notes |
 |---|---|
 | `Cell` | leading glyph, title, optional subtitle, value or chevron on the right. **The title takes the space and the trailing takes its own width**, capped so a long Telugu label ellipsizes — equal flex on both split the row in half and floated every count mid-row |
-| `Pressable` | the one press behaviour; bare text inside it measures only the text, so wrap it to reach 44 |
+| `Pressable` | the one press behaviour; bare text inside it measures only the text, so wrap it to reach 44. Anything tappable goes through it — `Tile.onTap` does |
 | `PrimaryButton` | the single filled action on a screen |
 | `SecondaryButton` | tinted text on a soft fill |
 | `CardAction` | a thumb-sized button sitting on a card rather than in a bar |
@@ -423,7 +423,7 @@ Design decisions worth a reviewer's attention:
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-1068 tests pass at the commit this document describes.
+1070 tests pass at the commit this document describes.
 
 ---
 
@@ -623,6 +623,26 @@ is worth a second look in the design layer, not a change made in passing.
 
 The 8 screens that genuinely draw no house surface are named in the test
 rather than silently skipped, so one that starts drawing cards is noticed.
+
+**9.13 — FIXED 4 November. Twenty-two cards acted without looking like it.**
+Raised by §9.12 in passing and then measured: `Tile.onTap` was a bare
+`GestureDetector`, and **22 tiles across 14 screens** pass one — every money
+card, every farm row, every partner order, the vet's cases, the dashboard, the
+store. None of them moved under a thumb. *If it acts, it must look like it
+acts* is a MUST, and the app already has exactly one press behaviour.
+
+`Tile` uses `Pressable` now, so all 22 change together. No call site
+double-dims: the only `Pressable` wrapped around a `Tile` is the finished-batch
+card of §9.12, whose `Tile` takes no `onTap`. The import goes upward,
+`night.dart` → `components.dart`, which is the one thing to dislike; the
+alternative was writing the scale and the dim out again a layer down, and a
+second press behaviour is how the first stops meaning anything.
+
+**Left for whoever owns the motion rules:** `Pressable` animates on `DS.fast`
+directly rather than through `context.motion`, so press feedback does not go
+away under reduced motion. That is pre-existing on every `Pressable` in the app
+— Cells, buttons, rows — and whether a 180ms response to the reader's own touch
+is the motion that rule means is a real question, not a reflex.
 
 **9.11 — PART FIXED 4 November; thirty-nine keys still await a Telugu
 speaker.** `telugu_test` compares the two key *sets*, and the source lints of
