@@ -284,8 +284,27 @@ like the five already live in `alerts.service.ts`.
 A day with water and no feed is skipped rather than divided — that is half a
 filled-in form, not a day the birds drank and did not eat.
 
-Still to do in phase 5: heat stress from `tempC` and `humidity`, humidity on
-the log form, `WeatherDay` and the forward alert.
+**Humidity is on the log form**, beside the temperature, because heat is the
+two together and one without the other says very little.
+
+That turned up a data-loss bug neither §2 nor this document had named. The
+form is authoritative over the day — *a field left empty here was emptied* —
+so with no humidity field it sent `humidity: null` on **every save**, and
+anything ever recorded was wiped by the next ordinary log. Temperature was in
+the same position by a different route: written by the form, never put back
+into it on re-open, and so erased by the next save of a day somebody opened to
+correct a death count. Both are prefilled now.
+
+One thing left open rather than worked around: the form fetches the day
+through `BatchRepo.logs` rather than `logsProvider`, deliberately, so it reads
+fresh before overwriting a whole day. That call cannot be stubbed from the
+screen harness, so the prefill path is read rather than tested. Giving the
+form the provider, or the harness that repo, would close it; changing a fetch
+that guards against overwriting a day with stale data was not something to do
+in passing.
+
+Still to do in phase 5: heat stress from `tempC` and `humidity` together,
+`WeatherDay` and the forward alert.
 
 ---
 
