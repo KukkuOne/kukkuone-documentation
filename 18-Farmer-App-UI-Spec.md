@@ -659,8 +659,12 @@ written from the model, and it hid this for as long as it existed.
 
 Still open underneath: `summary()` computes its own `fcr` while the client
 computes one from the two fields above. That duplication predates this and
-wants deciding, not widening. **The API change is committed but not
-deployed** — `kukkuone-farmer-api` at `a76e254`.
+wants deciding, not widening.
+
+Deployed 4 November from a clean archive of `develop` — farmer-api
+`a76e254`, database `d348253`, types `082a71a` — to dev version
+`1abba605-7a16-4e06-a689-a6c358cf1943` and production version
+`5d7294fc-0770-4452-8732-8aaf7c42eae1`. Nothing uncommitted shipped with it.
 
 **9.11 — OPEN, found on the way. Fifty keys are English in the Telugu file.**
 `telugu_test` compares the two key *sets*, and the source lints of §9.1 drag
