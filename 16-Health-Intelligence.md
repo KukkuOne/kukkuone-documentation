@@ -317,9 +317,30 @@ too hot.
 So all three of the signals §2 records as "written and read by nothing" now
 read: water against feed, and the shed's temperature with its humidity.
 
-Still to do in phase 5: `WeatherDay` — the outside temperature, which is what
-separates bad ventilation from a hot day — and the forward alert, which would
-be the first alert in the system that arrives before the damage.
+**A farm has a point on the ground now**, which it did not. `Farm.location`
+was the village as the farmer says it and nothing else — no coordinates in the
+schema, no location permission in either manifest, no package. A farm is often
+kilometres outside the village it is named after, so the name was never going
+to answer what Thursday will do.
+
+`Farm.latitude` and `longitude`, nullable, taken from the phone on a tap while
+somebody stands at the farm. **Not geocoded from the village name**: that
+would attribute a position to somebody's birds that nobody chose, silently,
+and be wrong by kilometres for exactly the farms that are out on their own.
+Null is a working state — the farm saves without it and only the weather is
+not offered.
+
+This is the first permission the app has ever asked for, so: never on open,
+never in the background, no `ACCESS_BACKGROUND_LOCATION`, and the reason sits
+on the row above the button because by the time the OS prompt appears the
+decision is already made. A refusal is not an error.
+
+**Not applied anywhere.** The migration is committed in both schemas and run
+against no database yet.
+
+Still to do in phase 5: `WeatherDay` itself — the outside temperature, which
+is what separates bad ventilation from a hot day — and the forward alert,
+which would be the first alert in the system that arrives before the damage.
 
 Everything in phase 5 is app-side and **not released**; it goes out with the
 next farmer-app build.
