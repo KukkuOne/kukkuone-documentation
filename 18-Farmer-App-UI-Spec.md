@@ -195,6 +195,10 @@ All in `lib/core/design/`. A screen composes these; it does not draw its own.
 | `SheetScreen` | a form as a page of its own; **draws its own Cancel**; commit action in the bar | **no** |
 | `NavScreen` | large title collapsing to a centred title on scroll | — |
 
+A screen uses one of these when one fits. Three do not and carry their own
+chrome on a `CupertinoPageScaffold`: the auth front door, the case photo and
+the sale slip. That is a decision to justify in a comment, not a defect.
+
 `SheetScreen` rules: do not add a second Cancel; a picker inside it closes with
 `closeForm`, **never** a bare `Navigator.pop` — popping the sheet's own
 navigator leaves an invisible sheet swallowing every tap on the screen beneath.
@@ -324,7 +328,7 @@ is not a second finding.*
 
 | Area | Screens |
 |---|---|
-| auth | SignIn *(raw `Scaffold` — see §9)* |
+| auth | SignIn *(`CupertinoPageScaffold` — no house scaffold fits an auth screen; see §9.7)* |
 | onboarding | AccountSetup **V**, FarmSetup **V** |
 | overview | Overview **N**, Attention **N** |
 | dashboard | Dashboard **N** |
@@ -425,7 +429,7 @@ Design decisions worth a reviewer's attention:
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 to 9.6 were fixed the same day; 9.7 to 9.10 are open.
+9.1 to 9.6 were fixed the same day and 9.7 was mostly withdrawn; 9.8 to 9.10 are open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -562,8 +566,28 @@ Fixed in passing: the shed row in `overview_charts.dart` had an `Expanded`
 in Telugu at 320pt (§9.3). It fits today; it is `Flexible` now anyway, because
 the rule is a MUST and not a reaction.
 
-**9.7 — `SignInScreen` uses a raw Material `Scaffold`.** The first screen every
-user meets is the one screen that does not use a house scaffold.
+**9.7 — PARTLY WITHDRAWN, and fixed where it was right. 4 November.**
+The finding said the first screen every user meets should move onto a house
+scaffold. Checked properly, that was wrong: **none of the four fits an auth
+screen.** There is no title to collapse, nothing behind it to go back to, and
+`SheetScreen` would draw a Cancel that must not be there. The screen was
+already canvas end to end — `C`, `T` and `DS` throughout, `CircleButton`,
+`PrimaryButton`, `SecondaryButton` and `InlineError` — with not one raw colour
+or spacing value in 535 lines. The single numeric literal is `96 * 0.224`, the
+iOS icon corner radius, documented where it sits.
+
+What *was* true underneath it: the screen imported
+`package:flutter/material.dart` to get one name, `Scaffold`, and used it for
+nothing but the box — no `Theme`, no `ScaffoldMessenger`, no `SnackBar`. It
+was the only Material scaffold in the app. It is `CupertinoPageScaffold` now,
+which is what the two other pages that carry their own chrome rather than a
+house scaffold already use: the case photo and the sale slip.
+
+**The corrected rule**, for whoever reads §3.1 next: a screen uses a house
+scaffold when one fits. Three do not — the auth front door and the two
+full-screen viewers — and those use `CupertinoPageScaffold` directly. A
+screen building its own chrome is a decision to justify in a comment, not a
+defect by itself.
 
 **9.8 — No breed standard for Cobb 430.** The Growth segment's dashed reference
 line is the point of the chart and does not draw, because no `BreedStandard`
