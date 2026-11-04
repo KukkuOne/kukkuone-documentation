@@ -184,7 +184,7 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 | 2 | Routing | **API done, 4 Nov.** The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
 | 3 | The app | `kukkuone-vet-mobile`: queue, case, diagnose, close | The loop end to end on two simulators, no AI involved |
 | 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
-| 5 | The signals we hold | Water to feed, heat stress, humidity on the form, `WeatherDay` and the forward alert | Alert tests at the thresholds; the July batch's figures unchanged |
+| 5 | The signals we hold | **Water to feed done, 4 Nov.** Heat stress, humidity on the form, `WeatherDay` and the forward alert | Alert tests at the thresholds; the July batch's figures unchanged |
 | 6 | Triage | Layer 3 on raise, ranked and presumptive; the agreement metric | A fixture case returns three ranked rows; the farmer sees urgency only |
 | 7 | Forecast | Projected weight, date, FCR and margin at close on the Growth segment | Back-tested against closed batches |
 
@@ -261,6 +261,31 @@ One thing a sign-out test caught that a reading would not: `vetPracticesProvider
 looks platform-wide, but its `known` flag is computed against the farm's own
 parties, so it is account data and must be dropped when somebody signs out. It
 watches `sessionProvider`, like `vetCasesProvider` beside it.
+
+---
+
+## 5c. The first of the signals
+
+`DailyLog.water` had been written by the log form and read by the log's own
+detail screen and the export — recorded and never used, which is what §2 means
+by the three signals nothing reads.
+
+It is a third chart on Growth now, beside weight and deaths a day. Water is
+stored in millilitres and feed in grams, and a millilitre of water weighs a
+gram, so the ratio is the two figures divided: no conversion, and none to get
+wrong.
+
+**No threshold and no verdict.** The band is quoted near 1.8–2.0:1, no vet has
+confirmed it for these birds in this climate, and the farmer is shown the shape
+instead. A coloured figure would be a claim where a line is an observation. The
+function names the spot a confirmed band goes into, marked `TODO(vet): confirm`
+like the five already live in `alerts.service.ts`.
+
+A day with water and no feed is skipped rather than divided — that is half a
+filled-in form, not a day the birds drank and did not eat.
+
+Still to do in phase 5: heat stress from `tempC` and `humidity`, humidity on
+the log form, `WeatherDay` and the forward alert.
 
 ---
 
