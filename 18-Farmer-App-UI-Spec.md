@@ -405,21 +405,21 @@ Design decisions worth a reviewer's attention:
 
 | Test | Enforces |
 |---|---|
-| `screens_test` | every screen mounts at 320×568 in English and Telugu |
+| `screens_test` | all 62 screens mount at 320×568 in English and Telugu, in light and dark, with a 3:1 contrast floor and a check that no skeleton is still showing |
 | `alignment_test` | nine screens' cards share the 16pt gutter |
 | `telugu_test` | en/te ARB parity |
 | `no_hardcoded_strings_test` | user-facing English in the source |
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-912 tests pass at the commit this document describes.
+990 tests pass at the commit this document describes.
 
 ---
 
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 and 9.2 were fixed the same day; the rest are open.
+9.1, 9.2 and 9.3 were fixed the same day; the rest are open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -461,11 +461,33 @@ Still open: `'${…} days'` in `close_batch_screen.dart:138` and
 `sell_birds_screen.dart:391`. Both are inside `Text(`, not a label argument,
 so the new lint does not reach them; the prose ratchet already counts them.
 
-**9.3 — Eleven screens never mounted by `screens_test`.** They have never been
-checked for Telugu overflow at 320pt: `Accounts`, `AccountEntry`,
-`AccountForm`, `AccountStatement`, `AccountTransfer`, `Attention`, `Offer`,
-`Reports`, `SellFeed`, `StandardForm`, `StoreLedger`. Note that `Reports` is
-also in 9.1.
+**9.3 — FIXED 4 November. Eleven screens were never mounted by
+`screens_test`.** `Accounts`, `AccountEntry`, `AccountForm`,
+`AccountStatement`, `AccountTransfer`, `Attention`, `Offer`, `Reports`,
+`SellFeed`, `StandardForm` and `StoreLedger` had never been rendered at
+320×568, in Telugu, or in light mode. All 62 screen classes are in the sweep
+now; the suite went from 912 tests to 990.
+
+Two real defects came out on the first run, which is the argument for the rule:
+
+- **`StandardFormScreen` left Cupertino's own placeholder grey**, `#c5c5c7` —
+  **1.73:1** on a white card and **2.43:1** on a dark one, against the sweep's
+  3:1 floor. The hint saying whether a box wants grams or an FCR was the least
+  readable text on the screen. It takes `C.label3` now, as the sign-in number
+  field already did.
+- **`StoreLedgerScreen` overflowed by 3.5pt in Telugu at 320pt.** The balance
+  at the end of each ledger row was a bare `Text` in a `Row` and could not give
+  way. A static sweep for that rule had reported the screen clean, because the
+  row *does* contain an `Expanded` — just not around the text that needed one.
+  Only mounting it in Telugu found it.
+
+One thing the work exposed about the harness rather than the app:
+`storeLedgerProvider` awaits three providers the harness overrides and then
+calls `StockRepo.issues` directly, which in a test never answers. The screen
+sat on its skeleton, and without the sweep's own "a screen still showing a
+skeleton has not been checked" assertion the audit would have passed against a
+blank page. The override now hands it the same pure `storeLedger()` the app
+runs, over fixtures already in the harness, so the arithmetic stays under test.
 
 **9.4 — Currency built by hand, without Indian grouping.**
 `medicine_purchase_screen.dart:256`, `place_batch_screen.dart:287`,
@@ -526,7 +548,9 @@ A review is most useful on the things a test cannot assert:
 4. **Does the night/canvas split read as one product**, or as two apps — the
    batch hub is canvas and the list it was opened from is night.
 5. **Does every status colour genuinely travel with a word**, screen by screen.
-6. **Telugu at 320pt**: mount the eleven screens of 9.3 and look.
+6. **Telugu at 320pt** beyond what a mount test can see. 9.3 closed the
+   coverage gap and the overflow it found, but a row that fits by 1pt and a
+   row that reads badly look identical to the sweep.
 7. **Light mode**, which is far less exercised than dark — the deviations in
    9.5 are visible there and nowhere else.
 8. **Does any screen show a figure a second time** in a different shape? That
