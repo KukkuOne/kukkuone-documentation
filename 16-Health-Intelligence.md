@@ -303,8 +303,26 @@ form the provider, or the harness that repo, would close it; changing a fetch
 that guards against overwriting a day with stale data was not something to do
 in passing.
 
-Still to do in phase 5: heat stress from `tempC` and `humidity` together,
-`WeatherDay` and the forward alert.
+**The shed's own weather is drawn**, directly under the weight chart, because
+that is what it explains. One series with the humidity in the readout — 31 °C
+and 68% do not share a scale, and the feed chart already answers that question
+the same way.
+
+**No index and no threshold**, for the same reason as water to feed: combining
+heat and humidity into one number means picking a published
+temperature-humidity index *and* a cut-off, and neither is confirmed for these
+birds in this climate. The farmer gets the shape; a vet decides what counts as
+too hot.
+
+So all three of the signals §2 records as "written and read by nothing" now
+read: water against feed, and the shed's temperature with its humidity.
+
+Still to do in phase 5: `WeatherDay` — the outside temperature, which is what
+separates bad ventilation from a hot day — and the forward alert, which would
+be the first alert in the system that arrives before the damage.
+
+Everything in phase 5 is app-side and **not released**; it goes out with the
+next farmer-app build.
 
 ---
 
