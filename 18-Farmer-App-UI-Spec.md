@@ -429,7 +429,7 @@ Design decisions worth a reviewer's attention:
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 to 9.6 and 9.8 were fixed the same day and 9.7 was mostly withdrawn; 9.9, 9.10 and 9.11 are open.
+9.1 to 9.6, 9.8 and 9.10 were fixed the same day and 9.7 was mostly withdrawn; 9.9 and 9.11 are open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -606,6 +606,61 @@ Matching also trims as well as lowercases: the breed is typed on the placement
 form and the standard on its own screen, months apart, and a trailing space is
 not a different breed. One predicate, shared by the chart and the row, so the
 two cannot disagree about whether a standard exists.
+
+**9.11 — OPEN, found on the way. Fifty keys are English in the Telugu file.**
+`telugu_test` compares the two key *sets*, and the source lints of §9.1 drag
+strings out of the source and into the ARB. Neither asks whether the Telugu
+side was ever translated. So fifty values sit in `app_te.arb` as their English
+selves: every cost head (Labour, Electricity, Transport, Litter, Gas, Repairs,
+Cleaning), every alert kind, every account-book kind, every reporting period,
+"Humidity", "Preparing shed". The lint that moved them into the ARB did its
+job; nobody did the next one.
+
+Not translated here, deliberately: fifty unreviewed strings landing in one go
+is a worse problem than the one being fixed, which is the argument the prose
+baseline already makes for itself. They are **frozen by key** in
+`test/untranslated_telugu.json` and a ratchet fails on a new one and on a
+translated one left in the list, so the debt is visible, attributable, and
+cannot quietly grow. Clearing it needs a Telugu speaker, not a model.
+
+**9.9 — Density, not correctness.** The hero occupies roughly 240pt on all five
+segments, and the Today segment's stage card spends about 290pt on a progress
+bar, "Stage 2 of 5", a stage name, a caption that repeats the three buttons
+directly beneath it, a full-width button and a disclosure link. "Mark ready for
+harvest" is also a four-word commit label against a one-or-two-word rule.
+
+**9.10 — FIXED 4 November, in the API, and the fixture is the lesson.**
+The Farms tab printed `—` for WEIGHT and FCR on a shed whose own batch screen,
+its card on Batches and the Store tab all printed 2.00 kg and 1.36 at the same
+moment.
+
+Traced: `GET /batches` returned the raw Prisma `Batch` row plus a last-log
+date. `avgWeight` lives on `WeightRecord` and `totalFeedKg` is derived, so
+neither was in the payload — while the Flutter `Batch` model reads exactly
+those two keys and computes FCR from them. **Every screen fed by that list
+held a batch whose weight and FCR could not be anything but null.** The screens
+that looked right are fed by `LiveBatch` from a different endpoint, which does
+carry them.
+
+The list carries both now: the newest weight as one more `take: 1` include
+beside the newest log, and feed as two `groupBy` queries for the whole page
+rather than two per batch. The feed rule — one source or the other, never the
+sum, since a log that records feed also issues it from the store — moved into
+`src/batches/figures.ts`, and `summary()` reads it instead of restating it.
+
+**The lesson is the fixture.** `test/screen_harness.dart` built its batches
+with `'avgWeight'` and `'totalFeedKg'` — keys the server never sent. So every
+mounted test rendered a weight and an FCR on the Farms row while the real app
+rendered dashes, and roughly 990 tests agreed the screen was fine. This is the
+rule in the mobile rulebook, word for word: *build fixtures from a real
+captured API response, not from the model's own field names — a fixture
+written from `fromApi` cannot catch `fromApi` reading the wrong field.* It was
+written from the model, and it hid this for as long as it existed.
+
+Still open underneath: `summary()` computes its own `fcr` while the client
+computes one from the two fields above. That duplication predates this and
+wants deciding, not widening. **The API change is committed but not
+deployed** — `kukkuone-farmer-api` at `a76e254`.
 
 **9.11 — OPEN, found on the way. Fifty keys are English in the Telugu file.**
 `telugu_test` compares the two key *sets*, and the source lints of §9.1 drag
