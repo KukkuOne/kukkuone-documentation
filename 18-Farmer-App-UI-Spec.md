@@ -52,7 +52,10 @@ colour is a *getter*, never a `const`, because a baked constant keeps whichever
 palette was in force when the widget was first built.
 
 > **Rule.** A literal `Color(0xFF…)` in a feature file is a defect. It renders
-> correctly in dark and becomes unreadable in light.
+> correctly in whichever mode its author had open and is unreadable in the
+> other. `test/theme_test.dart` enforces this two ways: every drawing token is
+> sampled in both palettes and must differ, and no `Color(0x…)` may appear in
+> `lib/features` or `lib/widgets` at all.
 
 ### 2.2 Colour tokens
 
@@ -415,14 +418,14 @@ Design decisions worth a reviewer's attention:
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-991 tests pass at the commit this document describes.
+992 tests pass at the commit this document describes.
 
 ---
 
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 to 9.4 were fixed the same day; the rest are open.
+9.1 to 9.5 were fixed the same day; the rest are open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -515,10 +518,27 @@ the existing ternary lint missed because it looks for a capital letter. That
 is the same blind spot §9.1 closed for label arguments; it is still open for
 ternaries.
 
-**9.5 — Chart colours baked into feature files.**
-`overview/dashboard_charts.dart:56-61` holds six literal `Color(0xFF…)` values
-and `widgets/charts.dart:33-36` four more. Both sit outside `core/design/`, so
-light mode cannot re-resolve them.
+**9.5 — FIXED 4 November. Chart colours baked into feature files.** Ten
+literal colours sat outside `core/design/`: six as `ChartColors.categorical`
+in `widgets/charts.dart`, picked for a white surface back when the app was
+light-only, and six in `overview/dashboard_charts.dart` picked for the dark
+one. Neither moved when the palette did.
+
+Neither needed to exist. `plots.dart` already carries `seriesTones` — two
+validator-checked sets, one per ground, switched by the theme, with a note
+explaining why light mode gets its own steps rather than a computed shade of
+the dark ones. Both call sites read it now, so the app's two chart layers
+agree on hue as well as on ink.
+
+**The gap that let them sit there is the more useful finding.** `theme_test`
+already had a test called "no drawing token is frozen to one palette", and it
+sampled `ChartColors`' four inks and `seriesTones` — but not the slots in
+between, which is exactly where the frozen six lived. The slots are sampled
+now; putting the `const` back makes it fail and names all six. A second test
+states the rule itself, since sampling named tokens can never find a literal
+in a file nobody thought to sample: no `Color(0x…)` in `lib/features` or
+`lib/widgets`, fully transparent excepted, because "draw nothing" is not a
+colour choice.
 
 **9.6 — Bare `Row` of `Fig`.** `money_screen.dart:475` and `:540` and
 `reports_screen.dart:374` build figure rows by hand instead of `Figures([...])`,
