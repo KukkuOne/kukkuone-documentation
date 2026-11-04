@@ -429,7 +429,7 @@ Design decisions worth a reviewer's attention:
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 to 9.6, 9.8 and 9.10 were fixed the same day, 9.9 partly, and 9.7 was mostly withdrawn; 9.11 is open.
+9.1 to 9.6, 9.8 and 9.10 were fixed the same day, 9.9 and 9.11 partly, and 9.7 was mostly withdrawn. What is left is named in each entry.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -607,112 +607,33 @@ form and the standard on its own screen, months apart, and a trailing space is
 not a different breed. One predicate, shared by the chart and the row, so the
 two cannot disagree about whether a standard exists.
 
-**9.11 — OPEN, found on the way. Fifty keys are English in the Telugu file.**
-`telugu_test` compares the two key *sets*, and the source lints of §9.1 drag
-strings out of the source and into the ARB. Neither asks whether the Telugu
-side was ever translated. So fifty values sit in `app_te.arb` as their English
-selves: every cost head (Labour, Electricity, Transport, Litter, Gas, Repairs,
-Cleaning), every alert kind, every account-book kind, every reporting period,
-"Humidity", "Preparing shed". The lint that moved them into the ARB did its
-job; nobody did the next one.
+**9.11 — PART FIXED 4 November; thirty-nine keys still await a Telugu
+speaker.** `telugu_test` compares the two key *sets*, and the source lints of
+§9.1 drag strings out of the source and into the ARB. Neither asks whether the
+Telugu side was ever translated. So fifty values sat in `app_te.arb` as their
+English selves: every cost head, every alert kind, every account-book kind,
+every reporting period, "Humidity", "Preparing shed". The lint that moved them
+into the ARB did its job; nobody did the next one.
 
-Not translated here, deliberately: fifty unreviewed strings landing in one go
-is a worse problem than the one being fixed, which is the argument the prose
-baseline already makes for itself. They are **frozen by key** in
-`test/untranslated_telugu.json` and a ratchet fails on a new one and on a
-translated one left in the list, so the debt is visible, attributable, and
-cannot quietly grow. Clearing it needs a Telugu speaker, not a model.
+**Eleven did not need a translator** — the file already said those words
+somewhere else. `headLabour` → `కూలీ` and `headElectricity` → `కరెంటు`, both
+from the file's own `undatedCosts` and `farmCostsDetail`; the four party kinds
+from `demoStepParties` and the two `new…Partner` labels; `placePreparingShed`
+verbatim from `preparingShed`; `invite`, `startLabel`, and `perBag`/`perKg`
+through the `-కు` the file already uses in `figADay`. Taking a word the file
+uses for that same word is not a guess.
 
-**9.9 — PARTLY FIXED 4 November; the rest is the reviewer's call.** Two of
-the three were rule-breaches rather than judgement, and are done.
+**The other thirty-nine stay frozen** in `test/untranslated_telugu.json`,
+because each needs a sentence, a register choice, or a word the file has never
+said. A ratchet fails on a new one and on a translated one left in the list,
+so the debt is visible, attributable and cannot quietly grow.
 
-The stage card's caption on Growing read "Log the day — feed, deaths, weight."
-directly above the buttons Log today, Mortality and Feed used. It goes when
-those buttons are there, and only for Growing — Ready and Harvesting say
-something the buttons do not. The condition lives at the call site that knows
-whether the buttons render, and the card is told, so the two cannot disagree.
-
-The button read "Mark ready for harvest": four words against a one-or-two-word
-rule, and the odd one out beside Place chicks, Record a lift and Close the
-batch. It is "Mark ready"; the sheet it opens keeps the long form as its
-title, where there is room to say what is being marked.
-
-Together those lift **What has happened** onto the first screen, where before
-it sat below the fold.
-
-**Left alone deliberately: the hero's height.** It is ~240pt on all five
-segments, already down from ~280 since the ring went from 148 to 104. Whether
-the lower four segments should collapse it to a line is a decision about what
-the product is, not a rule being broken, and §10 question 1 asks it rather
-than assuming an answer.
-
-**9.10 — FIXED 4 November, in the API, and the fixture is the lesson.**
-The Farms tab printed `—` for WEIGHT and FCR on a shed whose own batch screen,
-its card on Batches and the Store tab all printed 2.00 kg and 1.36 at the same
-moment.
-
-Traced: `GET /batches` returned the raw Prisma `Batch` row plus a last-log
-date. `avgWeight` lives on `WeightRecord` and `totalFeedKg` is derived, so
-neither was in the payload — while the Flutter `Batch` model reads exactly
-those two keys and computes FCR from them. **Every screen fed by that list
-held a batch whose weight and FCR could not be anything but null.** The screens
-that looked right are fed by `LiveBatch` from a different endpoint, which does
-carry them.
-
-The list carries both now: the newest weight as one more `take: 1` include
-beside the newest log, and feed as two `groupBy` queries for the whole page
-rather than two per batch. The feed rule — one source or the other, never the
-sum, since a log that records feed also issues it from the store — moved into
-`src/batches/figures.ts`, and `summary()` reads it instead of restating it.
-
-**The lesson is the fixture.** `test/screen_harness.dart` built its batches
-with `'avgWeight'` and `'totalFeedKg'` — keys the server never sent. So every
-mounted test rendered a weight and an FCR on the Farms row while the real app
-rendered dashes, and roughly 990 tests agreed the screen was fine. This is the
-rule in the mobile rulebook, word for word: *build fixtures from a real
-captured API response, not from the model's own field names — a fixture
-written from `fromApi` cannot catch `fromApi` reading the wrong field.* It was
-written from the model, and it hid this for as long as it existed.
-
-Still open underneath: `summary()` computes its own `fcr` while the client
-computes one from the two fields above. That duplication predates this and
-wants deciding, not widening.
-
-Deployed 4 November from a clean archive of `develop` — farmer-api
-`a76e254`, database `d348253`, types `082a71a` — to dev version
-`1abba605-7a16-4e06-a689-a6c358cf1943` and production version
-`5d7294fc-0770-4452-8732-8aaf7c42eae1`. Nothing uncommitted shipped with it.
-
-**9.11 — OPEN, found on the way. Fifty keys are English in the Telugu file.**
-`telugu_test` compares the two key *sets*, and the source lints of §9.1 drag
-strings out of the source and into the ARB. Neither asks whether the Telugu
-side was ever translated. So fifty values sit in `app_te.arb` as their English
-selves: every cost head (Labour, Electricity, Transport, Litter, Gas, Repairs,
-Cleaning), every alert kind, every account-book kind, every reporting period,
-"Humidity", "Preparing shed". The lint that moved them into the ARB did its
-job; nobody did the next one.
-
-Not translated here, deliberately: fifty unreviewed strings landing in one go
-is a worse problem than the one being fixed, which is the argument the prose
-baseline already makes for itself. They are **frozen by key** in
-`test/untranslated_telugu.json` and a ratchet fails on a new one and on a
-translated one left in the list, so the debt is visible, attributable, and
-cannot quietly grow. Clearing it needs a Telugu speaker, not a model.
-
-**9.9 — Density, not correctness.** The hero occupies roughly 240pt on all five
-segments, and the Today segment's stage card spends about 290pt on a progress
-bar, "Stage 2 of 5", a stage name, a caption that repeats the three buttons
-directly beneath it, a full-width button and a disclosure link. "Mark ready for
-harvest" is also a four-word commit label against a one-or-two-word rule.
-
-**9.10 — The same batch, two different answers.** On the Farms tab the Shed 1
-row prints `—` for WEIGHT and FCR while the batch's own screen, the Batches
-card and the Store tab all print 2.00 kg and 1.36 for it at the same moment.
-Seen on the running app, 4 November. The cause is most likely the farms
-summary payload not carrying those two fields, so the UI correctly renders
-"no data" — but a farmer reading two screens sees the app contradict itself,
-which is what "one number, one computation" exists to prevent. Worth tracing
-from `farms_screen.dart` back to the endpoint before deciding where to fix it.
+Worth knowing for whoever picks this up: the codebase **already kept two
+ledgers** of part of this — a test in `enum_labels_test` called *"what still
+awaits a Telugu speaker is English, not a guess"*, and a comment on
+`headLabel` naming each key. Both covered the cost heads only. The ratchet is
+the third and covers the whole ARB; all three were updated together, and the
+enum test failed first, exactly as its own comment says it should.
 
 ---
 
