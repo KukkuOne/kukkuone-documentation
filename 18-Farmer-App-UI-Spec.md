@@ -6,9 +6,11 @@ three explanatory notes. Every token, component and screen below was read out
 of the code, not designed on paper — where the code and this document disagree,
 the code is right and this document is stale.
 
-Audience: a reviewer, human or agent, evaluating the interface. §10 says what
-to evaluate and §9 lists the deviations already known, so a review that only
-rediscovers §9 has found nothing new.
+Audience: a reviewer, human or agent, evaluating the interface. §11 draws every
+screen — the ten that carry the product from the running app, with screenshots,
+and the rest from the source. §10 says what to evaluate and §9 lists the
+deviations already known, so a review that only rediscovers §9 has found
+nothing new.
 
 Companion documents: `.claude/skills/mobile-ui-quality/SKILL.md` is the
 enforceable rulebook this app is held to; `15-Batch-Centric-Redesign.md` is
@@ -332,7 +334,8 @@ is not a second finding.*
 | partner | PartnerOrders **N**, OrderDetail **N**, OrderChicks **S**, OrderFeed **S** |
 | more | Account **N**, Profile **N**, Settings **N**, People **V**, InviteMember **S** |
 
-Five tabs: Overview · Farms · Batches · Store · Money.
+Five tabs: Overview · Farms · Batches · Store · Money. Every screen above is
+drawn in §11.
 
 ---
 
@@ -477,6 +480,15 @@ bar, "Stage 2 of 5", a stage name, a caption that repeats the three buttons
 directly beneath it, a full-width button and a disclosure link. "Mark ready for
 harvest" is also a four-word commit label against a one-or-two-word rule.
 
+**9.10 — The same batch, two different answers.** On the Farms tab the Shed 1
+row prints `—` for WEIGHT and FCR while the batch's own screen, the Batches
+card and the Store tab all print 2.00 kg and 1.36 for it at the same moment.
+Seen on the running app, 4 November. The cause is most likely the farms
+summary payload not carrying those two fields, so the UI correctly renders
+"no data" — but a farmer reading two screens sees the app contradict itself,
+which is what "one number, one computation" exists to prevent. Worth tracing
+from `farms_screen.dart` back to the endpoint before deciding where to fix it.
+
 ---
 
 ## 10. What to evaluate
@@ -497,10 +509,1272 @@ A review is most useful on the things a test cannot assert:
    9.5 are visible there and nowhere else.
 8. **Does any screen show a figure a second time** in a different shape? That
    is this codebase's most repeated defect and the fastest thing to find.
+9. **Does any screen show a figure the app knows as `—`?** §9.10 is one
+   instance found by eye in a few minutes; a sweep across the five tabs
+   against one batch would say whether it is the only one.
 
 ---
 
-## 11. Cross-references
+## 11. Screen frames
+
+Every screen in the app, drawn. Frames are 402×874 points (iPhone 17 Pro), the
+size `alignment_test` measures at; `screens_test` additionally mounts each one
+at **320×568**, which is the width to design against.
+
+**How to read a frame.** The box is the phone. Indentation is nesting. A name
+in `Code` is the house component that draws the block, and “quoted” text is the
+real English string from `app_en.arb` — the Telugu is longer, always. The
+**States** line under each frame lists the loading, empty and error treatments
+that screen actually implements; a screen with no States line implements none,
+which is itself a finding.
+
+§11.1 is drawn by hand from the running app and the source. §11.2 is derived
+from the source directly: it shows a repeated row once, because the row is
+built in a loop, and it stops at 24 blocks.
+
+---
+
+### 11.1 The screens the product turns on
+
+#### Overview — `NightScreen` · the first tab
+
+![Overview](ui/tab-overview.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ (s)  EVERYTHING YOU RUN                            (🔔•) │  avatar · eyebrow · alerts
+│      Overview                                            │  the dot marks unread
+│                                                          │
+│ LIVE BIRDS                                               │  SectionHeader
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │   ╭────╮       ● Alive                     3,353     │ │  Donut — ring totals the
+│ │   │ ◯  │       ● Lost                        147     │ │  birds placed
+│ │   ╰────╯                                             │ │
+│ │  ────────────────────────────────────────────────────│ │
+│ │   3,500 placed across 1 batch                        │ │  NT.quiet, the anchor
+│ ╰──────────────────────────────────────────────────────╯ │
+│ MORTALITY                                                │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ 4.7%                                                 │ │  axis top
+│ │                                        ●             │ │  ComparePlot — one line
+│ │                              ╱                       │ │  per shed, % by day
+│ │        ╱                                             │ │
+│ │ DAY 0          DAY 30          DAY 60                │ │  first and last labels
+│ │ ▬ Shed 1  4.2%                                       │ │  never clipped
+│ ╰──────────────────────────────────────────────────────╯ │
+│ WEIGHT                                                   │  the same shape again
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ComparePlot against the breed standard               │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ [Overview] Farms  Batches  Store  Money                  │  tab bar, 5 tabs
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` · `Failed` · `Empty` “No farms yet”
+
+#### Batches — `NightScreen` · the list a batch is opened from
+
+![Batches](ui/tab-batches.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ (s)  YOUR RUN                                        (+) │
+│      Batches                                             │
+│                                                          │
+│ RUNNING                                                  │  SectionHeader
+│ ╭──────────────────────────────────────────────────────╮ │  BatchBoardCard
+│ │ ╭───╮  Shed 1                                        │ │  ProgressRing: day 57,
+│ │ │57 │  Chelgal Farm · Cobb 430                       │ │  “15 over”, ring turns
+│ │ │15 │  ( Growing )                                   │ │  red past target
+│ │ ╰───╯                                   StatusPill   │ │
+│ │ ████████████████████████████████████████████░        │ │  alive vs placed
+│ │ ■ Alive                              96%    3,353    │ │
+│ │ □ Lost                                4%      147    │ │
+│ │                                                      │ │
+│ │ MORTALITY        FEED A BIRD                         │ │  2×2 figure grid,
+│ │ 4.2%     ╲__     2.6 kg      ╱                       │ │  each with its trend
+│ │ FCR              AVG WEIGHT                          │ │
+│ │ 1.36             2.00 kg                             │ │
+│ │                                                      │ │
+│ │ [ Log today ] [ Mortality ] [ Feed used ]            │ │  QuickBar, 3 actions
+│ ╰──────────────────────────────────────────────────────╯ │
+│                                                          │
+│ FINISHED                                                 │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Shed 1                                      10 Jul   │ │
+│ │ Chelgal Farm · ran 45 days                           │ │
+│ │ PROFIT A BIRD     FCR        MORTALITY               │ │  Figures(3)
+│ │ -₹4               1.47       4.9%                    │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ Overview  Farms  [Batches]  Store  Money                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` · `Failed` · `Empty` “No batches yet”
+
+#### The batch hub — `CanvasScreen` · header and hero, shared by all five segments
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ‹ Batches                                                │  BackLine
+│ CHELGAL FARM · COBB 430                      ( + ) ( ⋯ ) │  eyebrow · CircleButtons
+│ Shed 1                                                   │  title (the shed code)
+│                                                          │
+│ ╭─ Tile ───────────────────────────────────────────────╮ │  THE HERO
+│ │   ╭────╮      ● Alive                      3,353     │ │  Donut, ring = 104pt
+│ │   │ ◯  │      ● Lost                         147     │ │  ring total = placed;
+│ │   ╰────╯      (● Sold, when any)                     │ │  segments = where each
+│ │  ────────────────────────────────────────────────────│ │  bird is now
+│ │   Day 57        2.00 kg        1.36                  │ │  Figures(3) — asserts 3
+│ │   AGE           WEIGHT         FCR                   │ │  NT.label captions
+│ │   4.2% mortality · sells around day 42 · 9,125 kg fed│ │  values 4–6 as a sentence,
+│ ╰──────────────────────────────────────────────────────╯ │  never a fourth Fig
+│                                                          │
+│ [ Today | Feed | Money | Health | Growth ]                │  Segments
+│                                                          │
+│ … the selected segment renders below …                   │
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` (whole screen) · `Failed` with retry
+Preparing variant: the hero collapses to “Preparing shed” + chicks due.
+
+#### Batch › Today
+
+![Batch › Today](ui/batch-today.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ WHERE THIS BATCH IS                                      │  Heading
+│ ╭──────────────────────────────────────────────────────╮ │  StageTimeline
+│ │ ███████ ███████ ░░░░░░ ░░░░░░ ░░░░░░                 │ │  5 stage bars
+│ │ Stage 2 of 5                                         │ │  NT.label
+│ │ Growing                                              │ │  NT.title
+│ │ Log the day — feed, deaths, weight.                  │ │  stage caption
+│ │ [         Mark ready for harvest          ]          │ │  PrimaryButton
+│ │ All five stages ⌄                                    │ │  disclosure
+│ ╰──────────────────────────────────────────────────────╯ │
+│ [ Log today ] [ Mortality ] [ Feed used ]                │  QuickBar — only while
+│                                                          │  birds are in the shed
+│ WHAT HAS HAPPENED                                        │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ BatchArc — the batch's whole life on one line:       │ │
+│ │ placement, vaccinations, courses, sales, today       │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ BATCH                                                    │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Placed                                     8 Sep     │ │  label left, value right,
+│ │ Placed birds                                3,500    │ │  value ellipsizes
+│ │ Died                                          147    │ │
+│ │ Culled                                          0    │ │
+│ │ Breed                                   Cobb 430     │ │
+│ │ Hatchery                                     …       │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ DAILY LOGS                                               │  CanvasSection
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ⊖ 2 days not logged                                  │ │  the gap is the finding
+│ │ Day 57 · 4 Nov                                    ›  │ │  date turns red on a
+│ │ 3 died · 426 kg feed · 2.00 kg a bird · Ravi         │ │  heavy day; the count is
+│ │ Day 56 · 3 Nov                                    ›  │ │  not printed twice
+│ ╰──────────────────────────────────────────────────────╯ │
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` (logs) · `Failed` · `Empty` “Nothing logged yet”
+
+#### Batch › Feed
+
+![Batch Feed](ui/batch-feed.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ INVENTORY                                                │  CanvasSection
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Pre-starter                                          │ │  one row per feed type
+│ │ Drew 35 bags (1,728 kg) from the farm store          │ │  bags AND kg, because
+│ │ Grower                                               │ │  the store counts bags
+│ │ Drew 77 bags (3,838 kg) from the farm store          │ │  and the log counts kg
+│ │ Finisher                                             │ │
+│ │ Drew 71 bags (3,559 kg) from the farm store          │ │
+│ │ ▣ Buy feed                            Chelgal Farm › │ │  the action, in place
+│ ╰──────────────────────────────────────────────────────╯ │
+│ WILL IT LAST?                                            │  Heading
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │  … kg         … g          …                         │ │  Figures(3) — the three
+│ │  A DAY        A BIRD/DAY   FEED DAYS                 │ │  that answer the heading
+│ │  The whole farm's store, not this shed's.            │ │  one line, scoping it
+│ ╰──────────────────────────────────────────────────────╯ │
+│ ╭─ ChartCard “Bags a day” ─────────────────────────────╮ │
+│ │ Plot — one series only. kg a day lives in the        │ │  the segment once drew
+│ │ readout, not as a second line on the same axes.      │ │  kg/day and bags/day
+│ ╰──────────────────────────────────────────────────────╯ │  from the same logs
+│ ISSUED TO THIS BATCH · BOUGHT FOR THIS BATCH             │  two more CanvasSections
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` · `Failed` · `Cell` “Nothing issued yet” with
+“The feed figures come from the daily logs.”
+Worth checking: the Store tab states 23 days left for this batch — confirm
+FEED DAYS here agrees, since the two once disagreed (6 against 23).
+
+#### Batch › Money
+
+![Batch › Money](ui/batch-money.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ COMMITTED                                 ( running )│ │  label + StatusPill
+│ │ ₹6,72,988                                            │ │  NT.mega, tabular
+│ │ ₹6,72,988      ₹0            ₹100/kg                 │ │  Figures — SPENT,
+│ │ SPENT          EARNED        BREAK EVEN              │ │  EARNED, BREAK EVEN
+│ │ Not a loss yet — it settles when the birds go.       │ │  one line, not a para
+│ ╰──────────────────────────────────────────────────────╯ │
+│ WHAT IT COST                                             │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ████████████████████ ███████ ██ ▌▌▌▌                 │ │  StackBar
+│ │ ● Feed                        66%        ₹4,46,988   │ │
+│ │ ● Chicks                      20%        ₹1,33,000   │ │
+│ │ ● Labour                       5%          ₹36,000   │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ DAY BY DAY                                               │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ COSTS BY DAY · D29–D36                     ₹21,413   │ │  DayStackBars — costs
+│ │ ▌▌▌▌▌▌▌▌                                             │ │  and income get their
+│ │ D29 D30 D31 D32 D33 D34 D35 D36                      │ │  own charts on one
+│ ╰──────────────────────────────────────────────────────╯ │  shared day axis
+│ ₹49,000 of shared farm costs has no single day.          │  one-line note
+│ LOTS SOLD                                                │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ No birds lifted yet                                  │ │
+│ │ Lots appear here as traders take them.               │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ COSTS · TO COLLECT · TO PAY                              │  three CanvasSections
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` ×3 · `Failed` ×3 · empties inside each section
+Closed variant: COMMITTED becomes PROFIT or LOSS, the pill becomes `closed`.
+
+#### Batch › Health
+
+![Batch › Health](ui/batch-health.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ╭──────────────────────────────────────────────────────╮ │  the withdrawal banner
+│ │ ⚠ Withdrawal running                                 │ │  outranks everything:
+│ │   Safe to sell from 12 Nov                           │ │  it stops a lorry
+│ ╰──────────────────────────────────────────────────────╯ │  tinted 10% bad/ok
+│ VACCINATIONS · 5 OF 5 GIVEN                              │  header counts
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ☑ Day 0 · Marek's                                    │ │  a checklist against
+│ │   given 8 Sep                                        │ │  days, not a diary
+│ │ ☑ Day 6 · ND Lasota + IB                             │ │
+│ │   given 4 Nov                                        │ │
+│ │ ☑ Day 13 · IBD (Gumboro) intermediate                │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ MEDICATION                                               │  hidden when empty —
+│ ╭──────────────────────────────────────────────────────╮ │  "nothing given" above
+│ │ Course · what, when, withdrawal                      │ │  "nothing bought" was
+│ ╰──────────────────────────────────────────────────────╯ │  two cards saying nothing
+│ MEDICINE INVENTORY                                       │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ▣ Buy medicine                        Chelgal Farm › │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ▣ Add medication                                  ›  │ │
+│ │ ▣ Ask a vet                                       ›  │ │  carries the batch id
+│ ╰──────────────────────────────────────────────────────╯ │
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` ×2 · `Failed` ×2 · `Cell` “No schedule on this batch”
+
+#### Batch › Growth
+
+![Batch › Growth](ui/batch-growth.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ╭─ ChartCard “Weight” ─────────────────────────────────╮ │
+│ │ a bird, by day   ← caption, replaced by the verdict  │ │  “8% ahead” / “12% behind”
+│ │ 2.24 kg                                              │ │  toned good/warn/bad
+│ │        ╱                                             │ │
+│ │     ╱     ┄┄┄┄ breed standard, DASHED                │ │  a reference line, never
+│ │  ╱                                                   │ │  a second series
+│ │ DAY 0        DAY 21        DAY 42                    │ │  first and last labels
+│ │ ▬ This batch  2.00 kg                                │ │  are never clipped
+│ ╰──────────────────────────────────────────────────────╯ │
+│ ╭─ ChartCard “Deaths a day” ───────────────────────────╮ │
+│ │ last 14 logged days                                  │ │
+│ │ TrendLine — the shape matters more than any day      │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ◉ Weigh a sample                                  ›  │ │  no dead end: the empty
+│ ╰──────────────────────────────────────────────────────╯ │  state is actionable here
+└──────────────────────────────────────────────────────────┘
+```
+States: `Empty` “Not enough to draw yet” until 2 weights or 3 loss days
+Known gap: the dashed standard does not draw for Cobb 430 — see §9.8.
+
+#### Money — `NightScreen` · the fifth tab
+
+![Money](ui/tab-money.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ (s)  BATCHES AND DUES                              (▮▮▮) │  CircleButton → Reports
+│      Money                                               │
+│                                                          │
+│ WHERE WE STAND                                           │  Heading
+│ Across every batch you can see.                          │  scope, said once
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ ₹14,88,473    ₹8,01,047    -₹6,87,425                │ │  Figures(3), NET toned
+│ │ SPENT         EARNED       NET                       │ │  bad when negative
+│ │ ₹0            ₹0                                     │ │  values 4–5 as a second
+│ │ TO COLLECT    TO PAY                                 │ │  row, never a 4th Fig
+│ ╰──────────────────────────────────────────────────────╯ │
+│ BATCH BY BATCH                                           │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Sep · Shed 1                        ( running )  ›   │ │  month · shed, StatusPill
+│ │ Chelgal Farm · 57 days                               │ │
+│ │ ₹6,72,988     ₹0           ₹6,72,988                 │ │  Figures(3)
+│ │ SPENT         EARNED       COMMITTED                 │ │
+│ │ WHAT IT COST                                         │ │
+│ │ ████████████████ ███████ ██ ▌▌▌                      │ │  StackBar
+│ │ ● Feed    ₹4,46,988   ● Chicks  ₹1,33,000            │ │  two-column legend,
+│ │ ● Labour    ₹36,000   ● Medicine  ₹15,000            │ │  amount beside the name
+│ ╰──────────────────────────────────────────────────────╯ │
+│ FINISHED BATCHES                                         │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Jul · Shed 1                        ( closed )   ›   │ │
+│ │ ₹8,15,485     ₹8,01,047    -₹14,438                  │ │  COMMITTED becomes
+│ │ SPENT         EARNED       LOSS                      │ │  PROFIT or LOSS
+│ ╰──────────────────────────────────────────────────────╯ │
+│ … further down: to collect, to pay, AgeingBars, parties  │  ⚠ five English Fig
+│ Overview  Farms  Batches  Store  [Money]                 │    labels live here —
+└──────────────────────────────────────────────────────────┘    §9.1, and §9.6
+```
+States: `Skeleton` ×4 · `Failed` ×4
+
+#### Store — `NightScreen` · the fourth tab
+
+![Store](ui/tab-store.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ (s)  2 FARMS                                             │  eyebrow counts the farms
+│      Store                                               │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ STOCK ON HAND                                        │ │  NT.label
+│ │ 193 bags                                             │ │  NT.mega — the one
+│ │ 9,641 kg      ₹4,72,409    23                        │ │  number this screen is
+│ │ WEIGHT        VALUE        DAYS LEFT                 │ │  about, then Figures(3)
+│ ╰──────────────────────────────────────────────────────╯ │
+│ NEEDS YOU                                                │
+│    ╭────────────────────────────────────────────╮        │  a pill, not a card:
+│    │ Nothing in the store needs you today.      │        │  the quiet state is
+│    ╰────────────────────────────────────────────╯        │  visibly lighter
+│ FEED BY BATCH                                            │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Shed 1                          ( 23 days left )  ›  │ │  StatusPill, toned by
+│ │ Chelgal Farm                                         │ │  how little is left
+│ │ Drew 183 bags from the farm store                    │ │  amber — the link back
+│ │ 1.36          2.61 kg      121 g                     │ │  to the farm's stock
+│ │ FCR           FEED A BIRD  A BIRD A DAY              │ │  Figures(3)
+│ ╰──────────────────────────────────────────────────────╯ │
+│ THE FARMS                                                │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Fewf                                          ₹0     │ │  one card per farm store
+│ │ 0 bags holding · 0 kg                                │ │
+│ │ No feed in this store                                │ │  empty, in place
+│ ╰──────────────────────────────────────────────────────╯ │
+│ Overview  Farms  Batches  [Store]  Money                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` · `Empty` “No farms yet”
+
+#### Farms — `NightScreen` · the second tab
+
+![Farms](ui/tab-farms.png)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ (s)  YOUR SITES                                      (+) │
+│      Farms                                               │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ BIRDS STANDING                                       │ │
+│ │ 3,353                                                │ │  NT.mega
+│ │ ████████████████████████████████████████████░        │ │  places in use
+│ │ 3,353 of 3,500 places in use                         │ │
+│ │ 2             1            1                         │ │  Figures(3)
+│ │ FARMS         SHEDS        BATCH                     │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ THE FARMS                                                │
+│ ╭──────────────────────────────────────────────────────╮ │
+│ │ Chelgal Farm                                      ›  │ │  name, then village
+│ │ Chelagal                                             │ │
+│ │ 3,353         1/1          -₹4                       │ │  Figures(3)
+│ │ STANDING      SHEDS        A BIRD                    │ │
+│ │ ────────────────────────────────────────────────────  │ │
+│ │ ▌ ╭───╮  Shed 1                    ( Growing )       │ │  a nested shed row,
+│ │ ▌ │57 │  Cobb 430 · 3,353 of 3,500 places · 1…       │ │  subtitle ellipsizes
+│ │ ▌ ╰───╯  4.2%        —           —                   │ │  ⚠ WEIGHT and FCR are
+│ │ ▌        DEAD        WEIGHT      FCR                 │ │    dashes here and
+│ ╰──────────────────────────────────────────────────────╯ │    2.00 kg / 1.36 on the
+│ ╭──────────────────────────────────────────────────────╮ │    batch itself — §9.10
+│ │ Fewf                                              ›  │ │
+│ │ Feeder                                               │ │
+│ ╰──────────────────────────────────────────────────────╯ │
+│ Overview  [Farms]  Batches  Store  Money                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: `Skeleton` · `Failed` · `Empty` “No farms yet”
+
+---
+
+### 11.2 Every other screen, from the source
+
+Derived mechanically from `lib/features`, so a row built in a loop appears
+once and a frame stops at 24 blocks. Labels are the real `app_en.arb` strings;
+`<name>` is a placeholder the string interpolates.
+
+#### Sign in
+
+**sign_in_screen.dart** — `Scaffold`
+```
+┌─ sign_in_screen ─────────────────────────────────────────┐
+│ PrimaryButton                                            │
+│   SecondaryButton “Sign in”                              │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+
+#### The batch
+
+**close_batch_screen.dart** — `SheetScreen` · “Close batch”
+```
+┌─ Close batch ────────────────────────────────────────────┐
+│     Section “How it ended”                               │
+│     Cell “Placed”                                        │
+│     Cell “Died”                                          │
+│     Cell “Culled”                                        │
+│     Cell “Sold”                                          │
+│     Cell “Age at close”                                  │
+│     PickerCell “Closing on”                              │
+│     Section “<n> still in the shed”                      │
+│     Cell                                                 │
+│     Section “Notes”                                      │
+│     TextCell “Note”                                      │
+│ Section “Feed and medicine”                              │
+│   Cell “Nothing bought for this batch yet”               │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**correct_placement_date_screen.dart** — `SheetScreen` · “Correct the date”
+```
+┌─ Correct the date ───────────────────────────────────────┐
+│ Section “The placement”                                  │
+│     Cell “Recorded as”                                   │
+│     PickerCell “Placed on”                               │
+│     Cell “Age”                                           │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**place_batch_screen.dart** — `SheetScreen`
+```
+┌─ place_batch_screen ─────────────────────────────────────┐
+│ Segments                                                 │
+│   HeroNumberField                                        │
+│ Section “The placement”                                  │
+│     PickerCell                                           │
+│     TextCell “Breed”                                     │
+│     PickerCell “Hatchery”                                │
+│   Section “Chick cost”                                   │
+│     NumberCell “Rate”                                    │
+│     NumberCell “Discount”                                │
+│     Cell                                                 │
+│     SwitchCell “Paid”                                    │
+│   Segments                                               │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**place_chicks_screen.dart** — `SheetScreen` · “Chicks arrived”
+```
+┌─ Chicks arrived ─────────────────────────────────────────┐
+│ HeroNumberField                                          │
+│ Section “The placement”                                  │
+│     PickerCell “Placed on”                               │
+│     TextCell “Breed”                                     │
+│     PickerCell “Hatchery”                                │
+│ Section “Chick cost”                                     │
+│     NumberCell “Rate”                                    │
+│     NumberCell “Discount”                                │
+│     Cell                                                 │
+│     SwitchCell “Paid”                                    │
+│ Segments                                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**stage_timeline.dart** — `SheetScreen` · “Mark ready for harvest”
+```
+┌─ Mark ready for harvest ─────────────────────────────────┐
+│ StageTimeline                                            │
+│   CanvasSection “Where this batch is”                    │
+│     PrimaryButton                                        │
+│     NumberCell “Birds lifted”                            │
+│     NumberCell “Total weight (kg)”                       │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+
+#### Dashboard
+
+**dashboard_screen.dart** — `NightScreen`
+```
+┌─ dashboard_screen ───────────────────────────────────────┐
+│     Tile                                                 │
+│     Tile                                                 │
+│     Tile                                                 │
+│     Tile                                                 │
+│     Tile                                                 │
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+
+#### Farms and sheds
+
+**farm_detail_screen.dart** — `CanvasScreen` · “Farm”
+```
+┌─ Farm ───────────────────────────────────────────────────┐
+│     BigFigure “birds here”                               │
+│     BigFigure “sheds full”                               │
+│     Heading “The farm”                                   │
+│     Raised                                               │
+│     Heading “Sheds”                                      │
+│     Heading “What it has earned”                         │
+│     Raised                                               │
+│     BigFigure                                            │
+│     BigFigure                                            │
+│     BigFigure                                            │
+│ Raised                                                   │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “Gone” · Empty “No sheds yet” · Failed · Skeleton
+
+**farm_form_screen.dart** — `SheetScreen` · “Add a farm”
+```
+┌─ Add a farm ─────────────────────────────────────────────┐
+│ Section                                                  │
+│     TextCell “Name”                                      │
+│     TextCell “Village”                                   │
+│ Segments                                                 │
+│     Section                                              │
+│     TextCell “Lessor”                                    │
+│     NumberCell “Rent”                                    │
+│     PickerCell “Charged”                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**shed_detail_screen.dart** — `CanvasScreen`
+```
+┌─ shed_detail_screen ─────────────────────────────────────┐
+│     BigFigure                                            │
+│     BigFigure                                            │
+│     BigFigure                                            │
+│     Heading “In the shed now”                            │
+│     Heading “Mortality, batch by batch”                  │
+│     Raised                                               │
+│     TrendLine                                            │
+│     Heading “Batches before this”                        │
+│     Raised                                               │
+│   Raised                                                 │
+│     StatusPill                                           │
+│     BigFigure                                            │
+│     BigFigure                                            │
+│     BigFigure                                            │
+│ Raised                                                   │
+│     PrimaryButton                                        │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+**shed_form_screen.dart** — `SheetScreen` · “Add a shed”
+```
+┌─ Add a shed ─────────────────────────────────────────────┐
+│ Section                                                  │
+│     TextCell “Name”                                      │
+│     NumberCell “Capacity”                                │
+│ Segments                                                 │
+│   SecondaryButton                                        │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+
+#### Harvest
+
+**offer_screen.dart** — `SheetScreen` · “Offer harvest”
+```
+┌─ Offer harvest ──────────────────────────────────────────┐
+│ Section “The lot”                                        │
+│     NumberCell “Birds offered”                           │
+│     NumberCell “Average weight”                          │
+│     PickerCell “Ready on”                                │
+│     NumberCell “Asking rate”                             │
+│ Section “Who sees this”                                  │
+│ Section “Notes”                                          │
+│     TextCell “Notes”                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+
+#### Medicine
+
+**add_medication_screen.dart** — `SheetScreen` · “Add medication”
+```
+┌─ Add medication ─────────────────────────────────────────┐
+│ Section “What was given”                                 │
+│     PickerCell “Product”                                 │
+│     NumberCell “Quantity”                                │
+│ Segments                                                 │
+│ Section “The course”                                     │
+│     PickerCell “Started”                                 │
+│     PickerCell “Ended”                                   │
+│     NumberCell “Withdrawal”                              │
+│ Section “Cost”                                           │
+│     Cell “From the store at <rate> per <unit>”           │
+│     NumberCell “Cost”                                    │
+│     TextCell “Note”                                      │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**medicine_purchase_screen.dart** — `SheetScreen` · “Medicine purchase”
+```
+┌─ Medicine purchase ──────────────────────────────────────┐
+│ Section “What was bought”                                │
+│     PickerCell “Product”                                 │
+│     NumberCell “Quantity”                                │
+│     NumberCell “Rate”                                    │
+│     Cell                                                 │
+│ Section “The bill”                                       │
+│     PickerCell “Supplier”                                │
+│     PickerCell “Expires”                                 │
+│     TextCell “Invoice”                                   │
+│     PickerCell “Date”                                    │
+│     SwitchCell “Paid”                                    │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**medicine_stock_screen.dart** — `CanvasScreen` · “Medicine”
+```
+┌─ Medicine ───────────────────────────────────────────────┐
+│     CanvasSection “Worth a look”                         │
+│     Cell                                                 │
+│   CanvasSection “On the shelf”                           │
+│     Cell “Name”                                          │
+│ Section “What is on the shelf”                           │
+│     NumberCell “Name”                                    │
+│ Section                                                  │
+│     TextCell “Reason”                                    │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “The store is empty” · Failed · InlineError · Skeleton
+
+
+#### Insight
+
+**alert_settings_screen.dart** — `CanvasScreen` · “Alerts”
+```
+┌─ Alerts ─────────────────────────────────────────────────┐
+│   CanvasSection “What fires”                             │
+│ SwitchCell                                               │
+│     NumberCell                                           │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+**alerts_screen.dart** — `CanvasScreen` · “Alerts”
+```
+┌─ Alerts ─────────────────────────────────────────────────┐
+│     CanvasSection “Today”                                │
+│     CanvasSection “Earlier”                              │
+│ Cell                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “Nothing needs attention” · Failed · Skeleton
+
+**history_screen.dart** — `CanvasScreen` · “History”
+```
+┌─ History ────────────────────────────────────────────────┐
+│     CanvasSection                                        │
+│ Cell                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “Nothing recorded yet” · Failed · Skeleton
+
+**standards_screen.dart** — `CanvasScreen` · “Breed standards”
+```
+┌─ Breed standards ────────────────────────────────────────┐
+│     CanvasSection                                        │
+│     Cell “<n> points · day <from>–<to>”                  │
+│ Section                                                  │
+│     TextCell “Breed”                                     │
+│     Cell “Breed”                                         │
+│ Section “Standard by day”                                │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “No standards yet” · Failed · InlineError · Skeleton
+
+
+#### Store
+
+**sell_feed_screen.dart** — `SheetScreen` · “Sell feed”
+```
+┌─ Sell feed ──────────────────────────────────────────────┐
+│ HeroNumberField                                          │
+│   PickerCell “Feed”                                      │
+│ NumberCell “Bags”                                        │
+│   PickerCell “Buyer”                                     │
+│ SwitchCell “Paid now”                                    │
+│     PickerCell                                           │
+│     PickerCell                                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**store_ledger_screen.dart** — `NightScreen` · “Store ledger”
+```
+┌─ Store ledger ───────────────────────────────────────────┐
+│     Tile                                                 │
+│ Tile                                                     │
+│     Figures                                              │
+│     Fig “…”                                              │
+│     Fig “…”                                              │
+│     Fig                                                  │
+│     Fig                                                  │
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “Nothing has moved through this store yet” · Failed · Skeleton
+
+
+#### Daily records
+
+**daily_log_screen.dart** — `SheetScreen`
+```
+┌─ daily_log_screen ───────────────────────────────────────┐
+│     StatusPill “Late entry”                              │
+│   HeroNumberField                                        │
+│     Chips                                                │
+│ Section “The day”                                        │
+│     NumberCell “Culls”                                   │
+│     NumberCell “Water”                                   │
+│     NumberCell “Temperature”                             │
+│     PickerCell “Date”                                    │
+│   Section                                                │
+│     NumberCell “Culls”                                   │
+│     PickerCell “Date”                                    │
+│ Segments                                                 │
+│ Section                                                  │
+│     NumberCell “Bags”                                    │
+│     NumberCell “Loose”                                   │
+│     Cell “Fed today”                                     │
+│ Section “Note”                                           │
+│     TextCell “Observation”                               │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**log_detail_screen.dart** — `CanvasScreen`
+```
+┌─ log_detail_screen ──────────────────────────────────────┐
+│ Figures                                                  │
+│   Fig                                                    │
+│   Fig                                                    │
+│   Fig                                                    │
+│ CanvasSection “Daily log”                                │
+│     Cell “Alive”                                         │
+│     Cell “Feed”                                          │
+│     Cell “Water”                                         │
+│     Cell “Temperature”                                   │
+│     Cell “Humidity”                                      │
+│     Cell “The sample”                                    │
+│     Cell “Note”                                          │
+│ CanvasSection                                            │
+│     Cell “History”                                       │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**weight_sample_screen.dart** — `SheetScreen` · “Weigh a sample”
+```
+┌─ Weigh a sample ─────────────────────────────────────────┐
+│ Section “The sample”                                     │
+│     NumberCell “Birds weighed”                           │
+│     NumberCell “Together they weigh”                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+
+#### Money
+
+**account_entry_screen.dart** — `SheetScreen` · “Accounts”
+```
+┌─ Accounts ───────────────────────────────────────────────┐
+│ HeroNumberField                                          │
+│   PickerCell “Accounts”                                  │
+│ TextCell “Notes”                                         │
+│     PickerCell                                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**account_form_screen.dart** — `SheetScreen` · “New account”
+```
+┌─ New account ────────────────────────────────────────────┐
+│ TextCell “Account name”                                  │
+│   PickerCell “Type”                                      │
+│   PickerCell “Sits under”                                │
+│ NumberCell “Opening balance”                             │
+│     PickerCell                                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**account_statement_screen.dart** — `NightScreen`
+```
+┌─ account_statement_screen ───────────────────────────────┐
+│     Tile                                                 │
+│     Tile                                                 │
+│     Tile                                                 │
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+**account_transfer_screen.dart** — `SheetScreen` · “Transfer”
+```
+┌─ Transfer ───────────────────────────────────────────────┐
+│ HeroNumberField                                          │
+│ PickerCell “From”                                        │
+│ PickerCell “To”                                          │
+│ TextCell “Notes”                                         │
+│     PickerCell                                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**accounts_screen.dart** — `NightScreen` · “In hand”
+```
+┌─ In hand ────────────────────────────────────────────────┐
+│   Tile                                                   │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Fig                                                  │
+│ Tile                                                     │
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+**allocation_screen.dart** — `CanvasScreen` · “<head> split”
+```
+┌─ <head> split ───────────────────────────────────────────┐
+│     SecondaryButton                                      │
+│     PrimaryButton “Save split”                           │
+│     SecondaryButton                                      │
+│     PrimaryButton “Recalculate”                          │
+│ CanvasSection                                            │
+│     Cell “Cost”                                          │
+│     Cell “Month”                                         │
+│     Cell “Split”                                         │
+│ CanvasSection “Shares”                                   │
+│     Cell “No batch was alive that month”                 │
+│     NumberCell                                           │
+│     Cell                                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**costs_screen.dart** — `NightScreen` · “Costs”
+```
+┌─ Costs ──────────────────────────────────────────────────┐
+│   QuickBar                                               │
+│   Tile                                                   │
+│     RankBars                                             │
+│     Tile                                                 │
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “Nothing entered yet” · Failed · Skeleton
+
+**expenses_screen.dart** — `CanvasScreen` · “Costs”
+```
+┌─ Costs ──────────────────────────────────────────────────┐
+│     CanvasSection                                        │
+│     Cell                                                 │
+│     StatusPill “On credit”                               │
+│   Segments                                               │
+│ HeroNumberField                                          │
+│ Chips                                                    │
+│ Section “Details”                                        │
+│     PickerCell                                           │
+│     SwitchCell “Paid”                                    │
+│     PickerCell “Owed to”                                 │
+│     TextCell “Note”                                      │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “No farm costs yet” · Failed · InlineError · Skeleton
+
+**feed_purchase_screen.dart** — `SheetScreen` · “Feed purchase”
+```
+┌─ Feed purchase ──────────────────────────────────────────┐
+│ Chips                                                    │
+│ Section “Quantity”                                       │
+│     NumberCell “Bag size”                                │
+│     NumberCell “Bags”                                    │
+│     NumberCell “Loose”                                   │
+│ Segments                                                 │
+│ Section                                                  │
+│     NumberCell “Rate”                                    │
+│     NumberCell “Discount”                                │
+│     Cell                                                 │
+│ Section “The bill”                                       │
+│     PickerCell “Supplier”                                │
+│     TextCell “Invoice”                                   │
+│     PickerCell “Date”                                    │
+│     SwitchCell “Paid”                                    │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**feed_stock_screen.dart** — `CanvasScreen` · “Feed”
+```
+┌─ Feed ───────────────────────────────────────────────────┐
+│     CanvasSection “Worth a look”                         │
+│     Cell                                                 │
+│     Cell                                                 │
+│   CanvasSection “In the store”                           │
+│     Cell                                                 │
+│ Section “Bags on hand”                                   │
+│     NumberCell                                           │
+│ Section                                                  │
+│     TextCell “Reason”                                    │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “The store is empty” · Failed · InlineError · Skeleton
+
+**party_form_screen.dart** — `SheetScreen` · “New <kind>”
+```
+┌─ New <kind> ─────────────────────────────────────────────┐
+│ Section “Name”                                           │
+│     TextCell “Name”                                      │
+│     TextCell “Phone”                                     │
+│     TextCell “Place”                                     │
+│   Section “Usual rate”                                   │
+│     NumberCell “Declared”                                │
+│     NumberCell “Discount”                                │
+│   Section “Credit”                                       │
+│     NumberCell “Terms”                                   │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**record_payment_screen.dart** — `SheetScreen`
+```
+┌─ record_payment_screen ──────────────────────────────────┐
+│ HeroNumberField                                          │
+│ Segments                                                 │
+│ Section “Reference”                                      │
+│     TextCell “Reference”                                 │
+│     PickerCell “Date”                                    │
+│     PrimaryButton                                        │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**reports_screen.dart** — `NightScreen` · “Reports”
+```
+┌─ Reports ────────────────────────────────────────────────┐
+│     Tile                                                 │
+│     Tile                                                 │
+│     Tile                                                 │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Tile                                                 │
+│     StackBar “Received”                                  │
+│   Tile                                                   │
+│ Tile                                                     │
+│     Tile                                                 │
+│   Tile                                                   │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Tile                                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+**sell_birds_screen.dart** — `SheetScreen` · “Sell birds”
+```
+┌─ Sell birds ─────────────────────────────────────────────┐
+│ Section “<n> birds remaining”                            │
+│     PickerCell “Buyer”                                   │
+│     PickerCell “Lifted by”                               │
+│     PickerCell “Through”                                 │
+│     PickerCell “Lifted on”                               │
+│     Cell “Credit terms”                                  │
+│ Section “The lot”                                        │
+│     NumberCell “Birds lifted”                            │
+│     NumberCell “Gross weight”                            │
+│     TextCell “Vehicle”                                   │
+│     PickerCell “Weighment slip”                          │
+│ Section “Rate”                                           │
+│     NumberCell “Market rate”                             │
+│     NumberCell “Discount”                                │
+│     Cell                                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**supplier_payment_screen.dart** — `SheetScreen`
+```
+┌─ supplier_payment_screen ────────────────────────────────┐
+│ HeroNumberField                                          │
+│ Segments                                                 │
+│ Section “Reference”                                      │
+│     TextCell “Reference”                                 │
+│     PickerCell “Date”                                    │
+│     PrimaryButton                                        │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**wages_screen.dart** — `SheetScreen` · “Wages”
+```
+┌─ Wages ──────────────────────────────────────────────────┐
+│ Segments                                                 │
+│   Section “Who worked”                                   │
+│     NumberCell “People”                                  │
+│     NumberCell “Days worked”                             │
+│     NumberCell “A day, each”                             │
+│   HeroNumberField                                        │
+│ Section “Details”                                        │
+│     PickerCell “Month”                                   │
+│     SwitchCell “Paid”                                    │
+│     TextCell “Note”                                      │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+
+#### Account and settings
+
+**account_screen.dart** — `NightScreen` · “You and this business”
+```
+┌─ You and this business ──────────────────────────────────┐
+│   Tile                                                   │
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**invite_member_screen.dart** — `SheetScreen`
+```
+┌─ invite_member_screen ───────────────────────────────────┐
+│ Section                                                  │
+│     Cell “Mobile number”                                 │
+│     TextCell “Mobile number”                             │
+│     TextCell “Name”                                      │
+│ Segments                                                 │
+│   Section “Access”                                       │
+│     Cell “Add a farm first”                              │
+│   Section “Farms they run”                               │
+│     Cell “…”                                             │
+│     Section “Sheds they log · <farm>”                    │
+│     Cell “No sheds yet”                                  │
+│     Cell                                                 │
+│   Section “Can see”                                      │
+│     SwitchCell “Costs and expenses”                      │
+│     SwitchCell “Sale rates and revenue”                  │
+│     SwitchCell “Profit and settlements”                  │
+│   Section “Can do”                                       │
+│     SwitchCell “Place and close batches”                 │
+│     SwitchCell “Record sales”                            │
+│     SwitchCell “Add expenses”                            │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**people_screen.dart** — `NavScreen` · “People”
+```
+┌─ People ─────────────────────────────────────────────────┐
+│     Section                                              │
+│ Cell                                                     │
+│     StatusPill “Invited”                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+**profile_screen.dart** — `NightScreen` · “Account”
+```
+┌─ Account ────────────────────────────────────────────────┐
+│ Tile                                                     │
+│ Tile                                                     │
+│   Tile                                                   │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**settings_screen.dart** — `NightScreen` · “App”
+```
+┌─ App ────────────────────────────────────────────────────┐
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+
+#### Onboarding
+
+**account_setup_screen.dart** — `NavScreen` · “Your farm business”
+```
+┌─ Your farm business ─────────────────────────────────────┐
+│ PrimaryButton “Continue”                                 │
+│     Section                                              │
+│     TextCell “Business name”                             │
+└──────────────────────────────────────────────────────────┘
+```
+States: InlineError
+
+**farm_setup_screen.dart** — `NavScreen` · “Set up your farm”
+```
+┌─ Set up your farm ───────────────────────────────────────┐
+│     PrimaryButton “Start recording”                      │
+│     SecondaryButton “I'll do this later”                 │
+│     Section                                              │
+│ Cell                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+
+#### Overview
+
+**attention.dart** — `NightScreen` · “Across every shed”
+```
+┌─ Across every shed ──────────────────────────────────────┐
+│ Tile                                                     │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+
+#### Trading partner
+
+**order_chicks_screen.dart** — `SheetScreen` · “Order chicks”
+```
+┌─ Order chicks ───────────────────────────────────────────┐
+│ HeroNumberField                                          │
+│   PickerCell “Hatchery”                                  │
+│ PickerCell “Needed by”                                   │
+│   PickerCell “For batch”                                 │
+│ TextCell “Anything to add”                               │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**order_detail_screen.dart** — `NightScreen` · “Order”
+```
+┌─ Order ──────────────────────────────────────────────────┐
+│ Tile                                                     │
+│     StatusPill                                           │
+│   Tile                                                   │
+│     Tile                                                 │
+│     Figures                                              │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Fig                                                  │
+│     Tile                                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “Nothing ordered yet” · Failed · InlineError · Skeleton
+
+**order_feed_screen.dart** — `SheetScreen` · “Order feed”
+```
+┌─ Order feed ─────────────────────────────────────────────┐
+│ HeroNumberField                                          │
+│ Segments                                                 │
+│ NumberCell “Bag size”                                    │
+│ TextCell “Brand”                                         │
+│ PickerCell “Needed by”                                   │
+│   PickerCell “For batch”                                 │
+│ TextCell “Anything to add”                               │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**orders_screen.dart** — `NightScreen` · “Orders”
+```
+┌─ Orders ─────────────────────────────────────────────────┐
+│ Tile                                                     │
+│     Tile                                                 │
+│     StatusPill                                           │
+│     Tile                                                 │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “No trading partner yet” · Empty “Nothing ordered yet” · Failed · Skeleton
+
+
+#### Vet
+
+**ask_vet_screen.dart** — `SheetScreen` · “Ask a vet”
+```
+┌─ Ask a vet ──────────────────────────────────────────────┐
+│ TextCell                                                 │
+│   PickerCell “Which batch”                               │
+│ NumberCell “Birds affected”                              │
+│ NumberCell “Dead so far”                                 │
+│ SwitchCell “Let KukkuOne learn from this”                │
+└──────────────────────────────────────────────────────────┘
+```
+
+
+**vet_case_screen.dart** — `NightScreen` · “Ask a vet”
+```
+┌─ Ask a vet ──────────────────────────────────────────────┐
+│     Tile                                                 │
+│     StatusPill                                           │
+│     Tile                                                 │
+│     Tile                                                 │
+│     Tile                                                 │
+│ SwitchCell “Let KukkuOne learn from this”                │
+└──────────────────────────────────────────────────────────┘
+```
+States: Failed · Skeleton
+
+**vet_cases_screen.dart** — `NightScreen` · “Vet”
+```
+┌─ Vet ────────────────────────────────────────────────────┐
+│ Tile                                                     │
+│     StatusPill                                           │
+└──────────────────────────────────────────────────────────┘
+```
+States: Empty “Nothing asked yet” · Failed · Skeleton
+
+---
+
+## 12. Cross-references
 
 - `.claude/skills/mobile-ui-quality/SKILL.md` — the enforceable rulebook
 - `.claude/skills/web-ui-quality/references/rules.md` — the web half, so the
