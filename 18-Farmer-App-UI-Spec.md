@@ -235,7 +235,7 @@ autofocused), `NumberCell`, `TextCell`, `PickerCell`, `SwitchCell`.
 
 | Component | Contract |
 |---|---|
-| `Figures([...])` | a row of figures. **Three at most — it asserts.** Never a bare `Row` of `Fig`: a bare row does not flex and overflows at 320pt |
+| `Figures([...])` | a row of figures. **Three at most — it asserts**, and `theme_test` catches a hand-built `Row` of `Expanded(child: Fig(…))` that would never reach the assert |
 | `Fig(value, label)` | one figure and its ALL-CAPS name |
 | `Stat` | one number and what it is — the unit of every dashboard here |
 | `BigFigure` | an unboxed number that is the point of its card |
@@ -418,14 +418,14 @@ Design decisions worth a reviewer's attention:
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-992 tests pass at the commit this document describes.
+993 tests pass at the commit this document describes.
 
 ---
 
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 to 9.5 were fixed the same day; the rest are open.
+9.1 to 9.6 were fixed the same day; 9.7 to 9.10 are open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -540,12 +540,27 @@ in a file nobody thought to sample: no `Color(0x…)` in `lib/features` or
 `lib/widgets`, fully transparent excepted, because "draw nothing" is not a
 colour choice.
 
-**9.6 — Bare `Row` of `Fig`.** `money_screen.dart:475` and `:540` and
-`reports_screen.dart:374` build figure rows by hand instead of `Figures([...])`,
-bypassing the three-item assert. One carries two figures and the Reports one
-carries **four** — "a bird · margin · sold · batches" — which the assert exists
-to stop. Found while fixing 9.1; the labels are localised now but the row
-shape is unchanged.
+**9.6 — FIXED 4 November. Bare `Row` of `Fig`.** The audit found three; there
+were **five**, across Money, Reports and Accounts. `Figures([...])` asserts a
+row holds at most three, and a hand-built `Row(children: [Expanded(child:
+Fig(...))])` renders identically while never reaching the assert — so none of
+the five was ever counted.
+
+One of them carried four. On the closed-batches card it was *a bird · margin ·
+sold · batches*, and `batches` qualifies none of the other three: it is the
+**scope** of the figure above them. It reads as the sentence it always was
+now, through `acrossFinishedBatches`, which already existed with its Telugu.
+
+**The gap: an assert only fires on the component nobody used.** A test now
+reads the shape instead — a `Row` whose children are `Expanded(child: Fig(…))`
+is the thing `Figures` exists for. It walks to the line that closes the `Row`
+at the same indent rather than a fixed window, which would otherwise read into
+the next widget and call a legitimate `Figures()` below a `Row` a bare one.
+
+Fixed in passing: the shed row in `overview_charts.dart` had an `Expanded`
+`Text` and a bare one beside it — the shape that overflowed the store ledger
+in Telugu at 320pt (§9.3). It fits today; it is `Flexible` now anyway, because
+the rule is a MUST and not a reaction.
 
 **9.7 — `SignInScreen` uses a raw Material `Scaffold`.** The first screen every
 user meets is the one screen that does not use a house scaffold.
