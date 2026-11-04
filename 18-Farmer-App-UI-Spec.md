@@ -417,19 +417,19 @@ Design decisions worth a reviewer's attention:
 |---|---|
 | `screens_test` | all 62 screens mount at 320×568 in English and Telugu, in light and dark, with a 3:1 contrast floor and a check that no skeleton is still showing |
 | `alignment_test` | nine screens' cards share the 16pt gutter |
-| `telugu_test` | en/te ARB parity |
+| `telugu_test` | en/te ARB parity — key sets only, which is why §9.11 exists |
 | `no_hardcoded_strings_test` | user-facing English in the source |
 | `motion_test` | reduced motion is honoured |
 | `nav_bar_test`, `cell_test`, `batch_ring_test`, `money_figures_test`, … | component contracts |
 
-993 tests pass at the commit this document describes.
+997 tests pass at the commit this document describes.
 
 ---
 
 ## 9. Known deviations
 
 Found by audit on 4 November 2026. Listed so a review can look past them.
-9.1 to 9.6 were fixed the same day and 9.7 was mostly withdrawn; 9.8 to 9.10 are open.
+9.1 to 9.6 and 9.8 were fixed the same day and 9.7 was mostly withdrawn; 9.9, 9.10 and 9.11 are open.
 
 **9.1 — FIXED 4 November. Nine figure labels were English on a Telugu phone.**
 `Fig`'s label is its *second* argument, and `no_hardcoded_strings_test` only
@@ -589,11 +589,39 @@ full-screen viewers — and those use `CupertinoPageScaffold` directly. A
 screen building its own chrome is a decision to justify in a comment, not a
 defect by itself.
 
-**9.8 — No breed standard for Cobb 430.** The Growth segment's dashed reference
-line is the point of the chart and does not draw, because no `BreedStandard`
-row matches the seeded breed. This is a reference-data gap, not a layout one,
-and per the project's own rule a threshold no vet has confirmed must be marked
-`TODO(vet): confirm` rather than invented.
+**9.8 — FIXED 4 November, and it was not a reference-data gap.** I called the
+missing Cobb 430 curve reference data waiting to be seeded. `BreedStandard` is
+`@@unique([orgId, breed])` — it is **the farm's own curve**, entered on the
+Standards screen, and nothing should seed it globally.
+
+The defect was what happens without one. The dashed standard is the point of
+the weight chart — a weight curve alone says the birds are growing, which they
+always are — and with no matching row it simply stops drawing: no line, no
+verdict, no reason given. The screen that fixes it is two taps deep in
+Settings and nothing on the chart pointed at it. There is a row there now,
+shown only once the batch has been weighed twice and only when no standard
+matches, going straight to it.
+
+Matching also trims as well as lowercases: the breed is typed on the placement
+form and the standard on its own screen, months apart, and a trailing space is
+not a different breed. One predicate, shared by the chart and the row, so the
+two cannot disagree about whether a standard exists.
+
+**9.11 — OPEN, found on the way. Fifty keys are English in the Telugu file.**
+`telugu_test` compares the two key *sets*, and the source lints of §9.1 drag
+strings out of the source and into the ARB. Neither asks whether the Telugu
+side was ever translated. So fifty values sit in `app_te.arb` as their English
+selves: every cost head (Labour, Electricity, Transport, Litter, Gas, Repairs,
+Cleaning), every alert kind, every account-book kind, every reporting period,
+"Humidity", "Preparing shed". The lint that moved them into the ARB did its
+job; nobody did the next one.
+
+Not translated here, deliberately: fifty unreviewed strings landing in one go
+is a worse problem than the one being fixed, which is the argument the prose
+baseline already makes for itself. They are **frozen by key** in
+`test/untranslated_telugu.json` and a ratchet fails on a new one and on a
+translated one left in the list, so the debt is visible, attributable, and
+cannot quietly grow. Clearing it needs a Telugu speaker, not a model.
 
 **9.9 — Density, not correctness.** The hero occupies roughly 240pt on all five
 segments, and the Today segment's stage card spends about 290pt on a progress
