@@ -629,9 +629,12 @@ invite a second manual copy of a cost already on the batch. Postgres only —
 
 ### What is still not there
 
-- **Nothing is deployed or released.** `20261105140000_vet_expense_head` is
-  applied to no database; it is Postgres-only, so the deployed D1 needs
-  nothing, but the API that writes `category: 'VET'` is undeployed.
+- **Dev is deployed; production is not.** `kukkuone-farmer-api-dev` is on
+  version `a2d3bfd3`; the production deploy was refused and is waiting on an
+  approval. `20261105140000_vet_expense_head` needs no D1 file at all — it
+  adds a value to an enum *type* and `Expense.category` is `TEXT` there, which
+  `prisma/d1/README.md` now says once for every migration of that shape.
+  Nothing in the apps is released.
 - **Medicine with a dose, a duration and withdrawal days.** §3.3 asks for it
   on the Diagnose screen and `CaseDiagnosis` has no field for it. The
   withdrawal obligation in §3.7 — blocking mark-ready and sale inside the
