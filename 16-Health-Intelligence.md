@@ -143,10 +143,12 @@ the damage.
 
 ### 3.7 Three obligations the health module carries
 
-- **Withdrawal.** `MedicineUsage` exists and nothing stops a batch reaching
-  harvest inside the withdrawal window. Residue in meat is the largest real
-  liability here. Mark-ready and sale are blocked, with the clear date on the
-  batch's Health segment.
+- **Withdrawal.** ~~`MedicineUsage` exists and nothing stops a batch reaching
+  harvest inside the withdrawal window.~~ **Wrong when written, and §5g says
+  what was actually true.** The lot path had been blocking it since the money
+  module was built, and the clear date was already on the Health segment.
+  Three *other* ways out had no check at all; they do now. Residue in meat is
+  still the largest real liability here.
 - **Notifiable disease.** `Disease.notifiable` is already a column. A
   confirmed notifiable case is a reporting obligation, not an alert card.
 - **Area outbreak.** Cases across farms carry locations. "Three farms within
@@ -653,6 +655,80 @@ invite a second manual copy of a cost already on the batch. Postgres only —
 - **No device run, still.** 64 tests in the vet app and 1,090 in the farmer
   app; nothing has drawn a box with a finger, and the box arithmetic has never
   been checked against a real photograph on a real screen.
+
+## 5g. Withdrawal, and a lesson about reading the code first
+
+§3.7 said "nothing stops a batch reaching harvest inside the withdrawal
+window". That was not true, and building from it rather than from the code
+produced a second implementation of a figure that already existed — the one
+fault this codebase's first rule exists to prevent. The work was thrown away
+and done again. Writing it down because the document caused it.
+
+### What was already there
+
+- `MoneyService.safeSaleDate(orgId, batchId)` — last dose plus the withdrawal
+  days, taking whichever course ends latest and falling back to
+  `MedicineItem.withdrawalDays` when the course's own is zero.
+- A gate on the **lot** path in `money.service.ts`, which refuses a lift
+  inside the window *unless* the owner types a reason — and the reason is
+  recorded against the sale.
+- `GET money/batches/:id/safe-sale-date`, which the Sell birds screen already
+  calls.
+- The clear date on the Health segment, and a preview of it on the Add
+  medication form.
+
+### What was actually missing
+
+Three other ways for birds to leave, none of which checked anything:
+
+| Path | Judged on |
+|---|---|
+| `HarvestService.markReady` | the target harvest date the farmer names |
+| `HarvestService.recordSale` | today — a second sale path, never guarded |
+| `OffersService.create` | the offer's own `readyDate` |
+
+All three read `safeSaleDate` rather than recomputing it. The dates differ on
+purpose: marking a batch ready on the 7th for a lift on the 12th is correct
+even when the birds clear on the 9th, and refusing that would refuse a correct
+action — a farmer who cannot plan around a window will work around it instead.
+An offer for a date inside the window is a promise the farm will break with a
+distributor's lorry already sent, so it is refused on the date offered. A sale
+is judged on the day it happens, because that is when meat enters the food
+chain.
+
+**None of the three takes an override.** The lot path's override is a real
+clinical answer because its reason is written against the sale; an override
+with nowhere to record the reason is not an override, it is a hole.
+
+A test reads the source of all four paths rather than calling them, which
+needs no database and guards the fault that produced this section: a new way
+to sell birds added without a check. A test that exercised one path would have
+passed while three others leaked, which is how this survived.
+
+### The duplication that is staying
+
+`MedicineCourse.safeFrom` in the farmer app does the same arithmetic in Dart.
+It is kept, and `safeFrom` now says why in the code: the Add medication form
+needs the date before the course is saved, when there is no server to ask, and
+a form preview that round-trips per keystroke would be worse for no gain while
+the two agree — same last dose, same days, same arithmetic. What it also says
+is that the server is the authority, that four paths enforce its reading
+whatever the getter returns, and that if the boundary ever moves it moves in
+both places in one commit.
+
+### Not done
+
+- **A zero withdrawal period is ambiguous and nothing says so.**
+  `withdrawalDays` defaults to 0, so a medicine that genuinely has none and
+  one whose period nobody typed look identical. Resolving that by guessing
+  would be inventing reference data about food safety; surfacing it — "two
+  courses have no withdrawal period recorded" — is a screen's worth of work
+  and is not here.
+- **Nothing is deployed.** The gates are committed and the production worker
+  does not have them.
+- **No test drives a real refusal.** All four gates need a database to reach,
+  so what is pinned is that each path calls the check and names the date, not
+  that a sale is actually refused.
 
 ## 6. Cross-references
 
