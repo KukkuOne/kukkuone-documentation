@@ -629,12 +629,18 @@ invite a second manual copy of a cost already on the batch. Postgres only —
 
 ### What is still not there
 
-- **Dev is deployed; production is not.** `kukkuone-farmer-api-dev` is on
-  version `a2d3bfd3`; the production deploy was refused and is waiting on an
-  approval. `20261105140000_vet_expense_head` needs no D1 file at all — it
-  adds a value to an enum *type* and `Expense.category` is `TEXT` there, which
+- **The API is deployed**, 5 November: dev `a2d3bfd3`, production
+  `28f840b8`, both from a clean archive of `develop`.
+  `20261105140000_vet_expense_head` needs no D1 file at all — it adds a value
+  to an enum *type* and `Expense.category` is `TEXT` there, which
   `prisma/d1/README.md` now says once for every migration of that shape.
-  Nothing in the apps is released.
+  **Neither app is released**, so nothing reaches a phone: the vet app has
+  never been built for either platform, and the farmer app's next build is
+  what carries the `VET` cost head onto a farmer's screen.
+
+  So a fee booked today would land in the database and be invisible in the
+  app — correctly, as an `Expense` row the farmer's current build renders
+  under "Other" through `headLabel`'s fallthrough, rather than as nothing.
 - **Medicine with a dose, a duration and withdrawal days.** §3.3 asks for it
   on the Diagnose screen and `CaseDiagnosis` has no field for it. The
   withdrawal obligation in §3.7 — blocking mark-ready and sale inside the
