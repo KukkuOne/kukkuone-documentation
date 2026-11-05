@@ -182,7 +182,7 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 | 0 | Catalog | ~25 diseases seeded with Telugu names and the notifiable flag; `GET /vet/diseases` | Seed test; the list on a device |
 | 1 | The vet's half | **API done, 4 Nov.** The `vet` domain in the gateway; findings, diagnoses, visit, media, close; the case queries admit the assigned vet | A test per endpoint; a vet principal reads a case it was given and nothing else |
 | 2 | Routing | **API done, 4 Nov.** The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
-| 3 | The app | `kukkuone-vet-mobile`: queue, case, diagnose, close | The loop end to end on two simulators, no AI involved |
+| 3 | The app | **Built 5 Nov, released nowhere.** `kukkuone-vet-mobile`: sign-in, the practice, queue, case, diagnose, close | 44 tests and a clean analyze; no device run, no sign-in against the live gateway |
 | 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
 | 5 | The signals we hold | **Built 4–5 Nov, deployed nothing.** Water to feed, humidity on the form, the shed's conditions, `WeatherDay`, the outside line and HEAT_FORECAST | 1,089 Flutter tests and 83 API tests; both migrations still unapplied |
 | 6 | Triage | Layer 3 on raise, ranked and presumptive; the agreement metric | A fixture case returns three ranked rows; the farmer sees urgency only |
@@ -433,6 +433,109 @@ it is **unreleased**: the app changes go out with the next farmer build and the
 API changes with the next deploy.
 
 ---
+
+## 5e. What phase 3 landed
+
+`kukkuone-vet-mobile`, built 5 November, released nowhere. Three screens of
+§3.3 — the queue, the case and the diagnosis — and 44 tests.
+
+### An app of its own, and why that needed arguing
+
+The root `CLAUDE.md` says a new counterparty role belongs in
+`kukkuone-partner-mobile` rather than in a new app. That is right for the roles
+it means, and `kukkuone-partner-mobile/lib/core/models/roles.dart` gives the
+test it is applying: the five roles there are "one kind of software — publish a
+catalogue or an offer, receive an order, agree terms, record a dispatch or a
+pickup, settle". A vet does none of those. A clinical queue, a photograph with
+a lesion on it and a ranked differential are a different kind of software,
+which is the same argument that file already makes for keeping farming out.
+
+So §3.1 stands. Two things found while checking it:
+
+- `Capability` in that file has six values and no `VET`, so the partner app's
+  hand-maintained catalogue is already out of step with the API's enum —
+  `fromWire('VET')` returns null there today.
+- The root `CLAUDE.md` sentence is a generalisation that does not fit this
+  role. It is left as it is rather than edited in passing.
+
+### No Firebase, and the phone is the point
+
+A vet signs in with a mobile number and a code. Nothing else.
+
+The gateway composites its verifiers with the session one first
+(`packages/auth/src/providers/composite.ts`), so a token this platform minted
+at `/auth/otp/verify` is accepted by the deployed gateway even though it
+reports `authProvider: firebase`. That was checked in the source before the
+app was built on it, not assumed.
+
+It means no Firebase project, no Google sign-in, and three fewer dependencies
+than the farmer app carries. More than that, the phone is the *right*
+credential rather than the cheap one: `Party` carries no link to an
+`Organization`, so `practicesForFarm` joins a farm's own vet on the number
+(§3.4) — and a vet signing in with the number their farms already have written
+down is recognised by those farms without anybody doing anything.
+
+### The queue, the case, the diagnosis
+
+The queue separates cases in hand from the pool, because they are different
+decisions: one is work, the other is an offer, and taking it is a commitment
+another practice then cannot make. The server's order is kept exactly as sent;
+a queue sorted twice is a queue whose order nobody owns.
+
+Every figure on the case screen was read from the server and not one is
+computed in Dart. A case with no batch says the figures are absent rather than
+showing zeros. Photos come through the authenticated endpoint and are cached
+per launch — there is no `Image.network` and there must not be, because the
+bucket is private and the request needs a bearer that `Image.network` cannot
+send.
+
+A notifiable disease says so when it is picked, and says that recording it is
+not reporting it (§3.7).
+
+### A privacy fault in phase 1, found by building the consumer
+
+`GET /vet/cases/:id` returned `BatchesService.summary` straight through, and
+that is the farm's own batch screen — it carries `totalExpensesMinor`,
+everything the farm has spent on those birds. A vet opening a case about
+gasping birds was reading the farm's cost base.
+
+It is the argument this module already makes about photos, pointed the other
+way: a farm's disease history is commercially damaging, and so is what it pays
+for feed. A vet is a clinical guest, not a commercial one, and a vet who also
+trades birds is not a hypothetical person. Fixed as an allow-list rather than a
+delete, so a figure added to the farm's summary later does not reach a vet
+because nobody remembered the function existed.
+
+### Localisation, from the first commit
+
+Both ARB files, every string through `L`, and four guard tests. One of them
+closes a hole the farmer app's own ratchet cannot see: a key present in
+`app_en.arb` and missing from `app_te.arb` falls back to English in silence,
+and the farmer app's ratchet only compares keys that exist in both.
+
+28 strings are translated, taken verbatim from the farmer app where they have
+already been read by somebody who speaks Telugu. 77 read English and are
+listed in `test/untranslated_telugu.json`; a test holds them at that number.
+Translating 77 at once would be 77 unreviewed translations landing in one go,
+which is a worse problem than the one it fixes.
+
+### What is not there
+
+- **Mark and Visit**, the other two screens of §3.3. `CaseFinding.region`
+  exists and nothing writes one; findings are read on the case screen and
+  cannot be entered. Both are phase 4.
+- **Most of what §3.3 asks the Case screen to show.** Weight against the
+  breed standard, the feed and water trends, the shed and outside temperature,
+  vaccinations given and what the birds are already medicated with are all
+  named there and none is sent: the case endpoint returns the batch summary
+  and no series. Medicine with a dose, a duration and withdrawal days has no
+  field on `CaseDiagnosis` to go in at all. §3.3 describes a screen the API
+  cannot yet fill, and that gap is phase 4's to close rather than something
+  the app should fake.
+- **No device run.** 44 tests and a clean analyze; nothing has been built for
+  a simulator or signed in against the live gateway, because a real sign-in
+  spends an SMS on a number somebody owns.
+- **No iOS or Android release config.** The scaffold is `flutter create`'s.
 
 ## 6. Cross-references
 
