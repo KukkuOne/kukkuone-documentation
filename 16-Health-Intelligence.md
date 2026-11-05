@@ -183,7 +183,7 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 | 1 | The vet's half | **API done, 4 Nov.** The `vet` domain in the gateway; findings, diagnoses, visit, media, close; the case queries admit the assigned vet | A test per endpoint; a vet principal reads a case it was given and nothing else |
 | 2 | Routing | **API done, 4 Nov.** The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
 | 3 | The app | **Built 5 Nov, released nowhere.** `kukkuone-vet-mobile`: sign-in, the practice, queue, case, diagnose, close | 44 tests and a clean analyze; no device run, no sign-in against the live gateway |
-| 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
+| 4 | Marking and visits | **Built 5 Nov, deployed nowhere.** The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips under test; the fee books once per visit, unpaid, as VET |
 | 5 | The signals we hold | **API deployed 5 Nov, app unreleased.** Water to feed, humidity on the form, the shed's conditions, `WeatherDay`, the outside line and HEAT_FORECAST | 1,089 Flutter tests and 86 API tests; both migrations applied to both databases |
 | 6 | Triage | Layer 3 on raise, ranked and presumptive; the agreement metric | A fixture case returns three ranked rows; the farmer sees urgency only |
 | 7 | Forecast | Projected weight, date, FCR and margin at close on the Growth segment | Back-tested against closed batches |
@@ -548,6 +548,102 @@ which is a worse problem than the one it fixes.
   a simulator or signed in against the live gateway, because a real sign-in
   spends an SMS on a number somebody owns.
 - **No iOS or Android release config.** The scaffold is `flutter create`'s.
+
+## 5f. What phase 4 landed
+
+Built 5 November, released nowhere, deployed nowhere.
+
+### The box on a photo
+
+`CaseFinding.region` has existed since phase 1 and nothing had ever written
+one. The Mark screen writes it, on the column's own terms: fractions of the
+image rather than pixels, so a resize or a thumbnail does not invalidate every
+label ever drawn.
+
+The arithmetic is the risky part of the whole phase, so it is a pure function
+in `marking.dart` with sixteen tests on it. A box off by a few per cent looks
+right on the screen it was drawn on and labels the wrong thing forever, and
+the pair of image and region is training data (§3.5) — this is the one place
+where a sloppy implementation would quietly poison a dataset rather than
+visibly break a screen.
+
+What makes the conversion exact: the image is laid out at **its own aspect
+ratio**, so the widget's rectangle *is* the image's rectangle and a drag
+divides straight down to a fraction. Letterboxed inside a `BoxFit.contain` it
+would have needed the displayed rect worked out first, which is the kind of
+sum that is wrong by a few per cent forever. Also handled: a drag up and to
+the left is the same box as one down and to the right; a flick too thin in
+either direction is not a box; a drag off the edge is clamped rather than
+claiming part of an image that does not exist.
+
+The organ and lesion pickers keep the enums' own order, which is anatomical
+rather than alphabetical — trachea, lungs, air sacs, then the heart sac, then
+down through the gut. A vet opening a bird works in roughly that order.
+
+### Post-mortem photos
+
+An action on the case, not a screen. The case already shows every photo on
+it, the vet's included — they hang off the same case and come back through the
+same private read — so a second gallery would be a second place to look at one
+set of images.
+
+A sheet rather than straight to the camera, because a vet may have taken the
+picture an hour ago on the way back. Resized to 2048 on the long edge before
+it goes: a modern phone's full-resolution photograph is several megabytes, the
+endpoint takes twelve, and a vet on a farm road is uploading over whatever
+signal there is.
+
+### The visit, and the one thing a vet writes that is not clinical
+
+The visit screen is one screen for needed and done, because they are the same
+visit at two moments. The calendar only opens backwards for a visit that
+happened and forwards for one that is coming.
+
+`VetVisit.feePaise` has also existed since phase 1 with nothing booking it, so
+a farm's vet bills were invisible in cost by head. They are not now, and this
+is the only thing in the entire vet module that writes rather than reads —
+onto somebody else's books — so every rule it follows sits in `visit-fee.ts`
+beside the code and is pinned by a test:
+
+- The cost is the **farm's**, against the case's `orgId`, never the vet's.
+- It lands **unpaid**, attributed to the vet's own user id, with the practice
+  named in the note. A vet can create a debt here; a farmer seeing a fee they
+  did not expect must be able to see who put it there.
+- **Only a visit that happened.** A promise is not a bill. The server applies
+  that, not the client, so the rule lives in one place.
+- A fee of zero or null books nothing. A free visit is a visit, not a cost of
+  ₹0 taking up a line in a breakdown.
+- A batch cost carries no `farmId`, so the farm-level reports cannot count it
+  twice.
+- The date is the day of the visit, not the day it was typed.
+- Idempotent on `billKey` = `vet-visit:<id>`, so a retry on a bad line — which
+  is how a phone on a farm road behaves — charges the farm once.
+
+**`ExpenseCategory` gained `VET`.** `MEDICINE` would have taken the fee and
+conflated the consultation with the drug bill, so a farm comparing medicine
+spend across batches would have been reading two different things added
+together. It is **not** in the farmer app's `expenseHeads` picker, for the
+same reason `RENT` is not: a farmer never types it, and offering it would
+invite a second manual copy of a cost already on the batch. Postgres only —
+`Expense.category` is `TEXT` in the D1 schema.
+
+### What is still not there
+
+- **Nothing is deployed or released.** `20261105140000_vet_expense_head` is
+  applied to no database; it is Postgres-only, so the deployed D1 needs
+  nothing, but the API that writes `category: 'VET'` is undeployed.
+- **Medicine with a dose, a duration and withdrawal days.** §3.3 asks for it
+  on the Diagnose screen and `CaseDiagnosis` has no field for it. The
+  withdrawal obligation in §3.7 — blocking mark-ready and sale inside the
+  window — is a schema change and a phase of its own, and it is the largest
+  real liability this document names.
+- **The rest of the Case screen §3.3 describes.** Weight against the breed
+  standard, the feed and water trends, the shed and outside temperature,
+  vaccinations given and current medication are still not sent by the case
+  endpoint.
+- **No device run, still.** 64 tests in the vet app and 1,090 in the farmer
+  app; nothing has drawn a box with a finger, and the box arithmetic has never
+  been checked against a real photograph on a real screen.
 
 ## 6. Cross-references
 
