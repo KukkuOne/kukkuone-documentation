@@ -184,7 +184,7 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 | 2 | Routing | **API done, 4 Nov.** The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
 | 3 | The app | **Built 5 Nov, released nowhere.** `kukkuone-vet-mobile`: sign-in, the practice, queue, case, diagnose, close | 44 tests and a clean analyze; no device run, no sign-in against the live gateway |
 | 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
-| 5 | The signals we hold | **Built 4–5 Nov, deployed nothing.** Water to feed, humidity on the form, the shed's conditions, `WeatherDay`, the outside line and HEAT_FORECAST | 1,089 Flutter tests and 83 API tests; both migrations still unapplied |
+| 5 | The signals we hold | **API deployed 5 Nov, app unreleased.** Water to feed, humidity on the form, the shed's conditions, `WeatherDay`, the outside line and HEAT_FORECAST | 1,089 Flutter tests and 86 API tests; both migrations applied to both databases |
 | 6 | Triage | Layer 3 on raise, ranked and presumptive; the agreement metric | A fixture case returns three ranked rows; the farmer sees urgency only |
 | 7 | Forecast | Projected weight, date, FCR and margin at close on the Growth segment | Back-tested against closed batches |
 
@@ -414,9 +414,21 @@ day-35 bird in feather suffers at a temperature a chick does not notice.
 
 ### What is not done
 
-- **Neither migration is applied to any database.** `0009_farm_coordinates`
-  and `0010_weather_day` are committed in both schemas and run against
-  nothing, and the API that reads those columns is undeployed with them.
+- ~~Neither migration is applied to any database.~~ **Both are applied to
+  both databases and the API is deployed**, 5 November, version
+  `49f09525`, from a clean archive of `develop`. The app half is still
+  unreleased and goes out with the next farmer build, so the outside line and
+  the "use my location" row are not on anybody's phone yet — the alert,
+  however, is live, and will fire the first time a farm gives its
+  coordinates.
+
+  Applying the two to production is worth a line, because it did not go
+  cleanly: `0009` came back `Authentication error` from the Cloudflare API
+  while `0010`, seconds later, applied fine. Production briefly had the
+  `WeatherDay` table and no `Farm.latitude` — a state no migration describes
+  and `farms.service.ts` cannot write to. Re-running `0009` fixed it, and
+  `prisma/d1/README.md` now carries the warning: the exit status of a batch of
+  these is worth nothing, ask the database.
 - **The alert text is English from the server**, as every other alert's title
   and detail already is. Only the kind label is localised, and
   `alertKindHeatForecast` joins its ten siblings reading English in
@@ -428,9 +440,9 @@ day-35 bird in feather suffers at a temperature a chick does not notice.
   it: read `utc_offset_seconds` from the provider's own answer.
 
 So phase 5 is complete as §5 scoped it — water to feed, humidity on the form,
-the shed's own conditions, `WeatherDay`, and the forward alert. Everything in
-it is **unreleased**: the app changes go out with the next farmer build and the
-API changes with the next deploy.
+the shed's own conditions, `WeatherDay`, and the forward alert. The API half
+is **deployed**; the app half is **unreleased** and goes out with the next
+farmer build.
 
 ---
 
