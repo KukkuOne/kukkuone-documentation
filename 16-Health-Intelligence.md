@@ -184,7 +184,7 @@ simulator walk. Phase 5 is independent of every other and may go any time.
 | 2 | Routing | **API done, 4 Nov.** The farmer picks a vet or raises into the pool; claim | `vetOrgId` set on raise or claim; a pool case is claimable once |
 | 3 | The app | `kukkuone-vet-mobile`: queue, case, diagnose, close | The loop end to end on two simulators, no AI involved |
 | 4 | Marking and visits | The box on a photo, post-mortem media, the visit record and its fee into the batch's cost | `CaseFinding.region` round-trips; the fee shows in cost by head |
-| 5 | The signals we hold | **Water to feed done, 4 Nov.** Heat stress, humidity on the form, `WeatherDay` and the forward alert | Alert tests at the thresholds; the July batch's figures unchanged |
+| 5 | The signals we hold | **Built 4–5 Nov, deployed nothing.** Water to feed, humidity on the form, the shed's conditions, `WeatherDay`, the outside line and HEAT_FORECAST | 1,089 Flutter tests and 83 API tests; both migrations still unapplied |
 | 6 | Triage | Layer 3 on raise, ranked and presumptive; the agreement metric | A fixture case returns three ranked rows; the farmer sees urgency only |
 | 7 | Forecast | Projected weight, date, FCR and margin at close on the Growth segment | Back-tested against closed batches |
 
@@ -338,12 +338,99 @@ decision is already made. A refusal is not an error.
 **Not applied anywhere.** The migration is committed in both schemas and run
 against no database yet.
 
-Still to do in phase 5: `WeatherDay` itself — the outside temperature, which
-is what separates bad ventilation from a hot day — and the forward alert,
-which would be the first alert in the system that arrives before the damage.
+## 5d. The weather, and the alert that arrives first
 
-Everything in phase 5 is app-side and **not released**; it goes out with the
-next farmer-app build.
+`WeatherDay(farmId, date, tempMin, tempMax, humidity, rainfall)` exists, in
+both schemas, and it is a cache rather than a record: any row may be replaced
+by a later fetch of the same day, and a forecast is expected to change.
+
+**Open-Meteo, as §4 chose** — free, keyless, and verified against the live
+endpoint before anything was written, because four field names guessed from
+memory is four ways for an alert to quietly never fire again. The recorded
+answer is the fixture in `test/weather.test.ts`, so a renamed field fails a
+test rather than a farm.
+
+`date` is a `TEXT` of YYYY-MM-DD, as `Alert.dayKey` is, and not a timestamp.
+"Thursday at this farm" is a calendar day in India, the worker reading it runs
+in UTC, and an instant would drift a day at either end — at the one place a
+weather row is read, which is the place it matters.
+
+**A farm is asked about to two decimal places**, about 1.1 km. That is finer
+than the provider's own grid, so the forecast loses nothing, and the exact
+spot somebody stood in their own shed does not need to leave the platform to
+find out what the weather will do. Two farms in one village share a cache row
+into the bargain.
+
+**Fetched on a read, not on a schedule.** There is no cron in this deployment
+— the alert engine already re-evaluates when somebody opens the app — and
+adding a scheduler to answer a question being asked right now is the long way
+round. A fetched forecast is believed for six hours; a day that has already
+happened is written once and skipped on every fetch after, which is what
+keeps a refresh at four writes rather than eighteen.
+
+Nothing in the feed throws at a caller. A farm with no coordinates and a
+provider that is down are the same thing to every screen: no weather, and the
+rest of the page as it was. Five seconds and the request is abandoned, because
+a provider that hangs must not hang a list of alerts.
+
+### The outside temperature
+
+The shed chart now draws the outside maximum dotted behind the shed's own
+line, and names it. That is the whole reason the table holds a fortnight of
+past days rather than only yesterday: an outside line covering the last day of
+a fourteen-day window is a stub, and the comparison is the point. 34 °C in a
+shed is a ventilation fault when it is 29 °C outside and nothing but the
+weather when it is 35, and neither line alone says which.
+
+It is a second series on the house trend chart — dotted, unmarked, sharing the
+axis, with its figure beside the shed's in the readout — rather than a new
+chart. A farm that has never given its coordinates gets the shed line it
+always had.
+
+### HEAT_FORECAST
+
+The first alert in this system that arrives before the damage rather than
+reporting it. One per farm, not one per shed: the sky is the same across a
+farm and a farmer with five sheds does not need the same Thursday five times.
+That also means no per-shed mute, which makes it the second kind after
+`PAYMENT_OVERDUE` to skip it.
+
+Days ahead only, and the **nearest** crossing day leads rather than the
+hottest — the foggers have to go up before the first one, and a farmer told
+about Saturday will not act on Wednesday. It reads as *Green Valley — 41 °C on
+Thursday. Humidity around 30%. Fit the foggers and feed in the cool hours.*
+Amber, not red: something to do today about a day that has not arrived.
+
+**The threshold is 38 °C and no vet has confirmed it.** This one had two
+candidate numbers and they are not close. §3.6 puts the start of trouble near
+29 °C, where intake falls and FCR drifts — and an alarm at 29 would fire on
+most days between March and October in Telangana, which is the
+`MORTALITY_CUMULATIVE` mistake again: a threshold that fires during an
+ordinary week teaches a farmer to ignore it. 38 is where heat stops being a
+drag on growth and starts killing birds, so that is what is live, carrying
+`TODO(vet): confirm` like the five already in `alerts.service.ts`. The right
+figure almost certainly moves with humidity and with the age of the birds — a
+day-35 bird in feather suffers at a temperature a chick does not notice.
+
+### What is not done
+
+- **Neither migration is applied to any database.** `0009_farm_coordinates`
+  and `0010_weather_day` are committed in both schemas and run against
+  nothing, and the API that reads those columns is undeployed with them.
+- **The alert text is English from the server**, as every other alert's title
+  and detail already is. Only the kind label is localised, and
+  `alertKindHeatForecast` joins its ten siblings reading English in
+  `app_te.arb` — one Telugu label among eleven English ones would read worse
+  than eleven English ones. It is in the ratchet.
+- **Season as a prior** (§3.6's fourth signal) is untouched. The rainfall
+  column is stored and nothing reads it.
+- `istDayKey` assumes India, marked as a shortcut with the line that undoes
+  it: read `utc_offset_seconds` from the provider's own answer.
+
+So phase 5 is complete as §5 scoped it — water to feed, humidity on the form,
+the shed's own conditions, `WeatherDay`, and the forward alert. Everything in
+it is **unreleased**: the app changes go out with the next farmer build and the
+API changes with the next deploy.
 
 ---
 
