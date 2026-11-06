@@ -748,11 +748,16 @@ both places in one commit.
   rather than only warn is a food-safety rule and no vet has been asked —
   marked `TODO(vet): confirm` in `money.service.ts`. Today it warns: the
   count is returned and nothing is blocked.
-- **Deployed, except 0011.** Production runs the gates as of version
-  `18ee8b06` (farmer-api `af31002`). Migration 0011 is applied to dev only;
-  production needs its table schema read first, because the D1 half rebuilds
-  both tables from the column list in 0001 and would drop a column added by
-  hand outside these files — as 0008 found had happened to `User`.
+- **Deployed.** Production runs version `a52241c1` (farmer-api `a805b4a`),
+  with migration 0011 applied to both databases. The production schema was
+  read first, as the D1 file says to: `MedicineItem` and `MedicineUsage`
+  matched 0001 exactly, so the rebuild's column lists were complete.
+  `MedicineInventory` carries a later `batchId`, which survives because that
+  table is round-tripped with `SELECT *` rather than rebuilt.
+
+  Before: 2 items, 2 usages, 0 inventory rows. After: the same, both indexes
+  back, no temp tables, and `withdrawalDays INTEGER` with no default. The one
+  existing zero on each table is still a zero — ambiguous, as decided.
 - **No test drives a real refusal.** All four gates need a database to reach,
   so what is pinned is that each path calls the check and names the date, not
   that a sale is actually refused.
