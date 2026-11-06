@@ -718,14 +718,33 @@ both places in one commit.
 
 ### Not done
 
-- **A zero withdrawal period is ambiguous and nothing says so.**
-  `withdrawalDays` defaults to 0, so a medicine that genuinely has none and
-  one whose period nobody typed look identical. Resolving that by guessing
-  would be inventing reference data about food safety; surfacing it — "two
-  courses have no withdrawal period recorded" — is a screen's worth of work
-  and is not here.
-- **Nothing is deployed.** The gates are committed and the production worker
-  does not have them.
+- **A zero withdrawal period is ambiguous, and the ambiguity is now said
+  out loud but not resolved.** The mechanism, traced since: the Add
+  medication form starts its withdrawal field at `'0'`, and
+  `MoneyService.safeSaleDate` does `if (days === 0) continue` — so a farmer
+  who records a course and never touches that field has silently cleared the
+  birds for sale, and nothing downstream asks again. There is no catalogue to
+  fall back on: `MedicineItem.withdrawalDays` is documented as "the label's
+  figure" and is typed by the same farmer, defaulting to 0 in two more forms.
+
+  What is there now is a notice on that form — "No withdrawal: these birds
+  may be sold the day the course ends. The number of days is on the label." —
+  so the claim is stated where the label is in the farmer's hand, with a test
+  that fails if it goes silent again. That makes a wrong zero noticeable. It
+  does not make it impossible.
+
+  What is still missing is the third state. `withdrawalDays` is
+  `Int @default(0)` on both `MedicineItem` and `MedicineUsage`, so "none,
+  confirmed" and "nobody filled it in" cannot be distinguished, and no
+  report can say which courses are unrecorded. Making the column nullable is
+  the honest model and the right moment is before release, while the data is
+  small — but on D1 it is a SQLite table rebuild on two live tables, and
+  every existing 0 stays ambiguous whatever is done. Simply making the field
+  required is not the answer: a farmer who has lost the label would be unable
+  to record the dose at all, and an unrecorded medication is worse than one
+  with an unknown period.
+- **Deployed.** Production runs the gates as of version `18ee8b06`
+  (farmer-api `af31002`).
 - **No test drives a real refusal.** All four gates need a database to reach,
   so what is pinned is that each path calls the check and names the date, not
   that a sale is actually refused.
