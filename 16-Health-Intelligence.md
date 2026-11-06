@@ -718,33 +718,41 @@ both places in one commit.
 
 ### Not done
 
-- **A zero withdrawal period is ambiguous, and the ambiguity is now said
-  out loud but not resolved.** The mechanism, traced since: the Add
-  medication form starts its withdrawal field at `'0'`, and
-  `MoneyService.safeSaleDate` does `if (days === 0) continue` — so a farmer
-  who records a course and never touches that field has silently cleared the
-  birds for sale, and nothing downstream asks again. There is no catalogue to
-  fall back on: `MedicineItem.withdrawalDays` is documented as "the label's
-  figure" and is typed by the same farmer, defaulting to 0 in two more forms.
+- **A zero withdrawal period is no longer ambiguous.** `withdrawalDays` is
+  `Int?` on both `MedicineItem` and `MedicineUsage` as of migration 0011
+  (`20261106043000_withdrawal_days_optional` and `prisma/d1/0011`), so null
+  means nobody recorded it and 0 means a confirmed none. The default went
+  with the NOT NULL: an insert that omits the column no longer writes 0.
 
-  What is there now is a notice on that form — "No withdrawal: these birds
-  may be sold the day the course ends. The number of days is on the label." —
-  so the claim is stated where the label is in the farmer's hand, with a test
-  that fails if it goes silent again. That makes a wrong zero noticeable. It
-  does not make it impossible.
+  `MoneyService.withdrawal` returns `{ safeFrom, unrecorded }` in one pass
+  and `safeSaleDate` delegates to it, so the four gates still read one
+  computation. `GET money/batches/:id/safe-sale-date` returns both. The
+  arithmetic is in `src/money/withdrawal.ts` so it can be tested without a
+  database; eight tests cover the three states.
 
-  What is still missing is the third state. `withdrawalDays` is
-  `Int @default(0)` on both `MedicineItem` and `MedicineUsage`, so "none,
-  confirmed" and "nobody filled it in" cannot be distinguished, and no
-  report can say which courses are unrecorded. Making the column nullable is
-  the honest model and the right moment is before release, while the data is
-  small — but on D1 it is a SQLite table rebuild on two live tables, and
-  every existing 0 stays ambiguous whatever is done. Simply making the field
-  required is not the answer: a farmer who has lost the label would be unable
-  to record the dose at all, and an unrecorded medication is worse than one
-  with an unknown period.
-- **Deployed.** Production runs the gates as of version `18ee8b06`
-  (farmer-api `af31002`).
+  That pass also fixed a bug the ambiguity had been hiding: the old
+  `c.withdrawalDays || c.medicineItem.withdrawalDays` treats 0 as absent, so
+  a course a farmer had explicitly marked as having no withdrawal fell
+  through to the medicine's figure and blocked a sale already answered for.
+  It is `??` now, and a test pins it.
+
+  The farmer app carries the third state through: the field starts blank
+  rather than at `'0'`, the medicine picker distinguishes "no withdrawal"
+  from "no withdrawal recorded", and the form says which of the three it is
+  before saving.
+
+  Existing rows keep their 0 and stay ambiguous; turning them into null would
+  assert they were never recorded, which is a guess in the other direction.
+
+  **Still open.** Whether an unrecorded withdrawal should *block* a sale
+  rather than only warn is a food-safety rule and no vet has been asked —
+  marked `TODO(vet): confirm` in `money.service.ts`. Today it warns: the
+  count is returned and nothing is blocked.
+- **Deployed, except 0011.** Production runs the gates as of version
+  `18ee8b06` (farmer-api `af31002`). Migration 0011 is applied to dev only;
+  production needs its table schema read first, because the D1 half rebuilds
+  both tables from the column list in 0001 and would drop a column added by
+  hand outside these files — as 0008 found had happened to `User`.
 - **No test drives a real refusal.** All four gates need a database to reach,
   so what is pinned is that each path calls the check and names the date, not
   that a sale is actually refused.
