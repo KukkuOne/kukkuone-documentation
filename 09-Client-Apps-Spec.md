@@ -22,8 +22,8 @@ catalogue or an offer, receive an order, agree terms, record a dispatch,
 settle. One switcher over both would serve neither audience.
 
 The partner roles are **HATCHERY**, **FEED_SUPPLIER**, **TRADING_PARTNER**,
-**LIFTING_PARTNER** (built) and **CHICKEN_RETAILER** (not built — its tabs say
-"Soon"). The catalogue is `kukkuone-partner-mobile/lib/roles.ts`, kept in step
+**LIFTING_PARTNER** (built) and **CHICKEN_RETAILER** (web built; the partner mobile
+app still shows "Soon"). The catalogue is `kukkuone-partner-mobile/lib/roles.ts`, kept in step
 with `Capability` in `packages/types/src/enums.ts` by hand.
 
 Web consumes **`@kukkuone/api-client`** and **`@kukkuone/types`**. The Flutter

@@ -165,7 +165,8 @@ wondering where the farm went.
 
 The partner app's five roles: **HATCHERY**, **FEED_SUPPLIER**,
 **TRADING_PARTNER**, **LIFTING_PARTNER** (all built) and **CHICKEN_RETAILER**
-(not built — its tabs say "Soon" rather than render an empty farmer screen).
+(web built — demand, receipts and payments in `kukkuone-platform-web`; the
+partner mobile app still shows "Soon" rather than an empty farmer screen).
 The catalogue lives in `kukkuone-partner-mobile/lib/roles.ts` and must be kept
 in step with `Capability` in `packages/types/src/enums.ts` by hand.
 
