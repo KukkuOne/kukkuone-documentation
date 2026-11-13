@@ -136,12 +136,19 @@ they wait in the app.
   what happened; body = shed or farm · what to do (or "Overdue" for the
   owner's escalation). Data payload `{alertId, kind, batchId}`; a tap opens the
   batch, or the alerts list for a farm-level warning. Never a disease name.
-- **Devices.** `DeviceToken(userId, orgId, token unique, platform, appFlavour,
-  locale, createdAt, lastSeenAt)` — migration 0018 in both schemas. The app
-  registers with `POST /api/v1/farmer/devices {token, platform, flavour,
-  locale}` after sign-in, on FCM token refresh and when the language changes,
-  and calls `DELETE /api/v1/farmer/devices/:token` on sign-out. A token FCM
-  reports `UNREGISTERED` (or `INVALID_ARGUMENT` naming the token) is deleted.
+- **Devices.** `DeviceToken(userId, orgId, token, platform, appFlavour,
+  locale, createdAt, lastSeenAt)`, unique on `(token, orgId)` — migration 0018
+  in both schemas, made per organisation by 0020. The app registers with
+  `POST /api/v1/farmer/devices {token, platform, flavour, locale}` after
+  sign-in, on FCM token refresh and when the language changes; the server
+  writes one row for every active farm organisation the user is a member of
+  (and the one they are in), so someone in two organisations is warned about
+  both. Registering drops the token's rows for anyone else (a handed-on phone)
+  and for organisations the user has left. `DELETE
+  /api/v1/farmer/devices/:token` on sign-out removes the caller's rows for that
+  token in every organisation. A token FCM reports `UNREGISTERED` (or
+  `INVALID_ARGUMENT` naming the token) is deleted in every organisation — the
+  verdict is on the token, not the organisation.
 - **Sending.** `farmer-api/src/push/fcm.ts`: a JWT signed with WebCrypto RS256
   from the service-account key, exchanged for an OAuth2 access token cached
   until a minute before expiry, then FCM HTTP v1 `messages:send`. With no
@@ -150,18 +157,18 @@ they wait in the app.
   reason on screen first (Android 13+ `POST_NOTIFICATIONS`, iOS's own prompt).
   A warning arriving while the app is open refreshes the alerts and shows the
   app's own banner — no system notification on top. Android channel
-  `warnings` (high importance, created in `MainActivity`). iOS: Push
+  `warnings` (high importance, created in `MainActivity`); small icon
+  `ic_stat_warning`, the mark's white silhouette with the eye cut out, made
+  by `tool/render_notification.swift` (run by `tool/brand.sh`), named both in
+  the FCM message and as the manifest's `default_notification_icon`, tinted
+  by `default_notification_color` — the app's accent, `#4B3BD6` light and
+  `#A79BFF` dark. iOS: Push
   Notifications entitlement (`aps-environment`, development for Debug/Profile,
   production for Release) and Background Modes → remote notifications, for
   both flavours.
 - **Rollout.** Migration 0018 marks every alert open at the time it is applied
   as already pushed, so the first run after deploy does not send the backlog.
   Apply it to D1 before deploying the farmer-api that reads `pushedAt`.
-
-Known limits: a token belongs to one organisation (the last one that
-registered it), so someone in two farm organisations on one phone is pushed
-for the one they last opened. Android draws the launcher icon as the small
-notification icon; a monochrome one is still to be drawn.
 
 ### 3.2 Setup the owner of the Firebase and Cloudflare accounts must do
 
@@ -193,8 +200,10 @@ None of these were done by the code change; push stays silent until they are.
    Notifications capability enabled; Xcode's automatic signing does this when
    it next builds with the new entitlements.
 4. **Database.** Apply `kukkuone-database/prisma/d1/0018_device_tokens.sql`
-   to `kukkuone-dev` and `kukkuone`, confirm with the marker query in
-   `prisma/d1/README.md` (`m0018 = 1`), then deploy `kukkuone-farmer-api`.
+   and then `0020_device_token_per_org.sql` to `kukkuone-dev` and `kukkuone`,
+   confirm with the marker query in `prisma/d1/README.md` (`m0018 = 1`,
+   `m0020 = 1`), then deploy `kukkuone-farmer-api`. Without 0020 a second
+   organisation's registration fails on the old unique index.
 
 ## 4. When it runs
 
