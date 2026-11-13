@@ -40,6 +40,8 @@ This folder is the **single source of truth** for building KukkuOne. Read the do
 | 16 | [Health Intelligence](16-Health-Intelligence.md) | The vet loop, the vet app, the four layers of analysis, and its phases |
 | 17 | [AI Engine Boundary](17-AI-Engine-Boundary.md) | Read-side only: what the engine owns, what it never writes, and what that cancels |
 | 18 | [Farmer App UI Spec](18-Farmer-App-UI-Spec.md) | The farmer app's tokens, components, scaffolds and screens, with the deviations an audit found |
+| 19 | [Early Warnings](19-Early-Warnings.md) | Feed, water, mortality, weather and health-risk warnings with severity and action; breed baselines from the breeders' own tables |
+| 20 | [AI Engine](20-AI-Engine.md) | The engine on the owner's Mac behind a tunnel: the contract, the farmer's assistant, the safety policy, layer 3 for the vet, and the consented training feed |
 
 ---
 

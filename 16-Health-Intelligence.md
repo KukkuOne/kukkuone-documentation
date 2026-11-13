@@ -167,8 +167,17 @@ alerts and their settings, the batch hub of doc 15, auth and onboarding.
   becomes one org with no claim step and no pool.
 - **The farmer picks, the pool catches the rest.** Say "pool only" to drop the
   picker, or "admin routes" to move it to `kukkuone-admin-web`.
-- **No AI diagnosis reaches the farmer before a vet signs it.** Say "show the
-  AI to the farmer" to reverse it, knowing §3.5.
+- ~~**No AI diagnosis reaches the farmer before a vet signs it.**~~ **Changed
+  by the owner, 13 November 2026** (doc 20 §4). When a farmer asks the
+  assistant about symptoms, the answer carries severity, patterns, first aid
+  and the conditions the signs **may** be consistent with — shown as
+  possibilities only a vet can confirm, and always ending with "connect to a
+  vet". A medicine, a dose or a withdrawal period never reaches the farmer
+  from the AI, in any form. The ranked differential with probabilities is the
+  vet's alone: layer 3's `CaseDiagnosis` rows stay `diagnosedBy: 'ai'` and are
+  still filtered out of every farmer view (`farmerDiagnoses`). Say "pattern
+  only everywhere" to take the possible conditions back off the farmer's
+  screen.
 - **The vet app has no offline write queue**, only a local draft of the open
   diagnosis. Say "offline vet app" to carry farmer-mobile's queue across.
 - **Weather from Open-Meteo**, free and keyless, daily min, max, humidity and
