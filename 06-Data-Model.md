@@ -120,10 +120,12 @@ erDiagram
 | **DailyLog** | Per-day operational record | `date`, `openingBirds`, `mortality`, `culls`, `closingBirds`, `weightSampleQty`, `avgWeight`, `minWeight`, `maxWeight`, `uniformity`, `feedType`, `feedConsumed`, `water`, `medicineNotes`, `tempC`, `humidity`, `notes` |
 | **WeightRecord** | Sampled weight events | `date`, `sampleQty`, `avgWeight`, `minWeight`, `maxWeight`, `uniformity` |
 | **FeedItem** | Feed catalog (starter/grower/finisher) | `type`, `brand`, `bagSizeKg` |
-| **FeedInventory** | On-hand feed stock | `feedItemId`, `bags`, `kg`, `supplierId`, `unitCost` |
-| **FeedConsumption** | Feed drawn per batch/day | `batchId`, `feedItemId`, `date`, `bags`, `kg`, `cost` |
-| **MedicineItem** | Medicine catalog | `name`, `unit` |
-| **MedicineUsage** | Medicine applied to a batch | `batchId`, `medicineItemId`, `date`, `qty`, `cost`, `notes` |
+| **FeedInventory** | Feed stock movement, owned by a batch or by the farm | `batchId?`, `farmId?`, `feedItemId`, `kind` (StockMovementKind), `bags`, `kg`, `supplierId`, `unitCost`, `transferId?` |
+| **FeedConsumption** | Feed drawn per batch/day — **this is what charges the batch** | `batchId`, `feedItemId`, `date`, `bags`, `kg`, `cost` |
+| **MedicineItem** | Medicine catalog | `name`, `unit`, `withdrawalDays` |
+| **MedicineInventory** | Medicine stock movement, owned the same way as feed | `batchId?`, `farmId?`, `medicineItemId`, `kind`, `qty`, `unitCost`, `expiryDate?`, `transferId?` |
+| **MedicineUsage** | Medicine applied to a batch — **this is what charges the batch** | `batchId`, `medicineItemId`, `date`, `qty`, `cost`, `notes` |
+| **StockTransfer** | A manual carry-forward: leftovers handed from one store to another | `fromBatchId?`, `toBatchId?`, `date`, `value`, `notes` |
 | **VaccinationSchedule** | Planned/administered vaccines | `batchId`, `vaccine`, `scheduledDate`, `status` (Vaccination enum), `completedDate?` |
 | **Expense** | Cost line by category | `batchId`, `category` (chicks/feed/medicine/vaccination/labour/electricity/water/transport/other), `amount`, `currency`, `date` |
 | **Revenue** | Income line by source | `batchId`, `source` (bird/manure/other), `amount`, `currency`, `date` |
@@ -131,6 +133,50 @@ erDiagram
 | **Sale** | Sale of harvested birds | `batchId`, `buyerId?`, `qty`, `weight`, `rate`, `amount`, `currency` |
 | **Settlement** | Financial close of a batch's sales | `batchId`, `payable`, `paid`, `balance`, `status`, `date`, `reference` |
 | **BatchClosure** | Final closure record | `batchId`, `closedAt`, `summaryMetrics` (jsonb), `closedBy` |
+
+---
+
+### 4.1 Stock has an owner, and consumption is what costs
+
+Three rules, and every stock figure in the farmer app follows from them.
+
+**1. A movement names its store.** `batchId` on `FeedInventory` and
+`MedicineInventory` says whose stock these kilos are. A farmer buys twenty bags
+for the flock going into Shed 2, not for "the farm", so the purchase names that
+batch and only that batch may draw on them. `batchId: null` is still meaningful
+and still used: stock the farm holds in its own name — an opening balance, a
+bulk buy made before placement, or surplus handed back when a batch closed into
+an empty shed. A batch's issue is priced from its own store first and from the
+farm's only as a fallback; another batch's store is never read, because those
+kilos are not available without a carry-forward.
+
+**2. Owning stock is not being charged for it.** A batch is charged when it
+*consumes* — `FeedConsumption` and `MedicineUsage`, costed at the store's
+weighted average — never when it buys. A purchase raises an `Expense` against
+the **farm**, deliberately unallocated, and that row is cash out of the door;
+the issue is the cost. This is why `Expense.batchId` is never set by a feed or
+medicine purchase even when the stock belongs to a batch: the issue already
+charges it, and booking both would count the same bags twice and halve the
+apparent margin of every batch that buys its own feed.
+
+The consequence worth stating: a batch holding twenty unopened bags has
+committed the cash but carries none of it in its result. The settlement sheet
+reports that separately (`stock.value`), and `cost.total` — the figure profit is
+worked from — excludes it.
+
+**3. Stock moves between stores only because somebody said so.** A batch closing
+with eight bags and half a bottle left is a decision, not a derivation: the next
+flock may be a fortnight away, may be on a different brand, or the surplus may
+be worth more sold on. `StockTransfer` records that decision, with both legs
+(`TRANSFER_OUT` on the giver, `TRANSFER_IN` on the receiver) written under one
+row or neither, so stock can never leave a store without arriving somewhere.
+Either side may be null, meaning the farm's own store.
+
+A transfer **charges nobody**. Nothing was eaten, so no cost is booked on either
+side; the kilos change owner at the giving store's weighted average and the
+batch that eventually feeds them pays for them at its own rate. `value` is what
+they were worth on the day, carried for the audit trail and so a store that
+emptied into the next shed is explained rather than just gone.
 
 ---
 

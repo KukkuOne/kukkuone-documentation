@@ -517,6 +517,18 @@ currency, purchaseDate), `FeedReceipt` (purchase ref, received bags/kg, date),
 `FeedInventory` (per org/farm/feedType balance in bags + kg), `FeedConsumption`
 (`batchId`, `logDate`, feedType, kg, derived cost).
 
+> **Stock belongs to a batch, not to the farm.** A purchase names the flock it
+> was bought for (`FeedInventory.batchId`) and only that batch may draw on it;
+> `null` is stock the farm holds in its own name. Buying does **not** charge the
+> batch — `FeedConsumption` does, at the store's weighted average — so a batch
+> holding unopened bags has committed the cash without carrying it as cost.
+> Leftovers move between stores only through a manual carry-forward
+> (`POST /money/stock/transfer`), which charges nobody. See
+> [06-Data-Model.md §4.1](06-Data-Model.md).
+>
+> Medicine follows the same three rules, with `MedicineInventory` and
+> `MedicineUsage` in place of the feed pair (§7).
+
 ### 6.1 FCR Calculation
 
 ```
@@ -687,6 +699,26 @@ labour/electricity/water/transport/other are entered as expense lines.
 (`batchId`, `category`, `amountMinor`, `currency`, `date`, `note`, `sourceRef?`),
 `BatchRevenue` (`batchId`, `category`, `amountMinor`, `currency`, `date`,
 `qty?`, `weightKg?`, `note`).
+
+> **Phase 1 is the batch and the money, and nothing between them.** The
+> question this section exists to answer is "what did I put into this batch and
+> what did I get back", so a batch is the unit of account and there is no
+> ledger-balance layer in front of it: `Account` / `AccountEntry` exist in the
+> schema and the API, but the farmer app does not surface balances, statements
+> or transfers in Phase 1. Restoring them is a navigation change, not a
+> migration.
+>
+> **Two figures, never added together.** `cost.total` is what the batch has been
+> *charged* — the money that has turned into birds — and profit is worked from
+> it alone. `stock.value` is what the batch bought and has not fed yet: cash
+> committed, not cost incurred. Their sum is the honest answer to "how much have
+> I put in"; `cost.total` is the honest answer to "what has it cost me". The
+> settlement sheet reports both, and `stock.carriedIn` / `stock.carriedOut`
+> explain stock that arrived from or left for another store.
+>
+> While the birds are standing there is **no profit line at all** — cost is
+> committed and revenue is not yet in, so the difference would read as a loss on
+> every healthy batch.
 
 ### 9.1 Final Metrics & Formulas
 
