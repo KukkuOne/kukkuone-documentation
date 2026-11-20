@@ -95,9 +95,17 @@ party-wise views underneath.
 | **Store** | Stock on hand across farms, and a low-feed alert at 7 days or fewer (urgent at 3) with Order feed | One card per running batch: bags bought into its farm since placement, consumed, left, FCR, feed a bird, grams a bird a day, days left. Then each farm's store | The batch Feed segment: bags a day, per-bird figures |
 | **Money** | Where we stand: spent, earned, net, to collect, to pay | One line per batch: spent, earned, committed or profit, still to collect. Then accounts and who owes whom | The batch Money segment: result, cost by head, costs by day stacked by category, income by day, pending, lots |
 
-Feed is bought into a farm's store, not into a batch, so "bought" on a batch
-card is the farm's purchases since the batch was placed, and a farm with two
-running batches says the purchases are shared rather than splitting them.
+~~Feed is bought into a farm's store, not into a batch.~~ **Revised 20
+November 2026 (owner):** feed and medicine are bought **into a batch**. The
+Store reads batch by batch: each running batch's own stock (in, used, left),
+then what closed batches left behind, then the farm store. A leftover is moved
+to another batch (or the farm store) or sold. The cost rule is unchanged: a
+batch is charged when it eats, so moved stock is charged to the batch that
+eats it and sold stock is farm income. Use is walked in date order: a day's
+feed comes out of the batch's own stock if it had any that day, otherwise
+out of the farm store (`farmStore` in `kukkuone-farmer-api/src/batches/batch-inventory.ts`).
+Money leads with one card per running batch (spent, received, to collect),
+then "To collect" and "To pay" as two separate lists.
 
 Days of feed left is one computation everywhere: the farm's stock over the
 combined feed a day of its running batches across their last seven logs.
